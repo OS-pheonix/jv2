@@ -29,23 +29,27 @@ client.on('ready', () => {
 
 // Message event handler
 client.on('messageCreate', async message => {
-    // Ignore messages from bots to prevent loops
-    if (message.author.bot) return;
-    
-    // Convert message to lowercase for easier matching
-    const content = message.content.toLowerCase();
-    
-    // Log incoming messages for debugging
-    console.log(`Received message: ${content}`);
-    
-    // Basic response test
-    if (content.includes('hello jarvis')) {
-        try {
-            await message.reply('Hello! I am J.A.R.V.I.S, at your service.');
-            console.log('Successfully responded to hello message');
-        } catch (error) {
-            console.error('Error sending message:', error);
+    try {
+        // Simple bot check
+        if (message.author.bot) return;
+
+        // Log the incoming message for debugging
+        console.log('Message received:', {
+            content: message.content,
+            author: message.author.tag,
+            channel: message.channel.name
+        });
+
+        // Convert to lowercase for matching
+        const content = message.content.toLowerCase();
+
+        // Basic response test
+        if (content.includes('hello jarvis')) {
+            await message.channel.send('Hello! I am J.A.R.V.I.S, at your service.');
+            console.log('Response sent successfully');
         }
+    } catch (error) {
+        console.error('Error in message handler:', error);
     }
 });
 
@@ -54,10 +58,13 @@ app.listen(port, () => {
     console.log(`\nJ.A.R.V.I.S Web Interface Online - Port: ${port}`);
 });
 
-// Login the bot with error handling
-client.login(process.env.DISCORD_TOKEN).catch(error => {
-    console.error('Failed to login:', error);
-});
+// Login the bot
+try {
+    client.login(process.env.DISCORD_TOKEN);
+    console.log('Login attempt initiated');
+} catch (error) {
+    console.error('Login failed:', error);
+}
 
 // Error handling
 client.on('error', error => {
