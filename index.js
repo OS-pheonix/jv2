@@ -1,8 +1,4 @@
-require('dotenv').config();
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-
+const { Client, GatewayIntentBits } = require('discord.js');
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -12,55 +8,27 @@ const client = new Client({
     ]
 });
 
-// Memory system
-client.memories = new Collection();
+// Add this port listening code
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 3000;
 
-client.on('ready', () => {
-    console.log(`Logged in as ${client.user.tag}`);
-    console.log('J.A.R.V.I.S is online and ready to assist.');
+app.get('/', (req, res) => {
+    res.send('Bot is running!');
 });
 
-client.on('messageCreate', async message => {
-    if (message.author.bot) return;
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
 
-    // Basic response system
-    const content = message.content.toLowerCase();
-    
-    // Personal greeting for creator
-    if (content === 'hello jarvis' || content === 'hi jarvis') {
-        if (message.author.id === 'YOUR_DISCORD_ID') {
-            await message.reply("Hello Sir. How may I assist you today?");
-        } else {
-            await message.reply("Hello! How may I help you?");
-        }
-    }
+// Your existing bot code
+client.on('ready', () => {
+    console.log(`Logged in as ${client.user.tag}!`);
+});
 
-    // Memory creation and recall system
-    if (content.startsWith('jarvis remember ')) {
-        const memory = content.replace('jarvis remember ', '');
-        client.memories.set(Date.now(), {
-            content: memory,
-            author: message.author.id,
-            timestamp: new Date().toISOString()
-        });
-        await message.reply("I've stored that memory, Sir.");
-    }
-
-    if (content === 'jarvis recall memories') {
-        const memories = Array.from(client.memories.values())
-            .filter(m => m.author === message.author.id)
-            .slice(-5);
-        
-        if (memories.length === 0) {
-            await message.reply("I don't have any memories stored yet, Sir.");
-            return;
-        }
-
-        const memoryList = memories
-            .map(m => `${new Date(m.timestamp).toLocaleString()}: ${m.content}`)
-            .join('\n');
-        
-        await message.reply(`Here are your recent memories, Sir:\n${memoryList}`);
+client.on('messageCreate', message => {
+    if (message.content.toLowerCase().includes('hello jarvis')) {
+        message.reply('Hello! I am at your service.');
     }
 });
 
