@@ -1,5 +1,6 @@
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const express = require('express');
+const fs = require('fs').promises;
 
 // Create Discord client with all necessary intents
 const client = new Client({
@@ -12,119 +13,198 @@ const client = new Client({
     ]
 });
 
-// JARVIS Core System
+// JARVIS Neural Core System
 const JARVIS = {
     version: "v100.0.0",
     bootDate: new Date(),
     memory: new Collection(),
-    conversationContext: new Map(),
+    userProfile: {
+        name: "Sir",
+        preferences: new Map(),
+        patterns: new Map(),
+        conversations: [],
+        lastMood: null,
+        interests: new Set(),
+    },
     
-    // Personality traits and responses
-    personality: {
-        traits: {
-            supportive: true,
-            analytical: true,
-            friendly: true,
-            professional: true
-        },
+    // Enhanced Neural Network
+    neural: {
+        patterns: new Map(),
+        contextMemory: [],
+        conversationFlow: [],
         
-        getResponse: (type, context = {}) => {
-            const responses = {
-                greeting: [
-                    "Hello Sir. Always good to see you.",
-                    "At your service, Sir.",
-                    "Good to have you back, Sir. How can I assist?"
-                ],
-                acknowledgment: [
-                    "Understood, Sir.",
-                    "Right away, Sir.",
-                    "Processing your request, Sir."
-                ],
-                thinking: [
-                    "Analyzing the situation, Sir...",
-                    "Let me process that for you...",
-                    "Computing the best approach..."
-                ],
-                suggestion: [
-                    "If I may suggest, Sir...",
-                    "Based on my analysis...",
-                    "From my calculations, Sir..."
-                ]
+        // Learn from interaction
+        learn: async (message, response) => {
+            const pattern = {
+                input: message.content,
+                context: JARVIS.getCurrentContext(),
+                timestamp: new Date(),
+                response: response,
+                effectiveness: 1
             };
             
-            const options = responses[type] || responses.acknowledgment;
-            return options[Math.floor(Math.random() * options.length)];
-        }
-    },
-
-    // Knowledge and Learning System
-    knowledge: {
-        topics: new Set(),
-        conversations: [],
-        
-        learn: (message) => {
-            JARVIS.knowledge.conversations.push({
-                timestamp: new Date(),
-                user: message.author.tag,
+            JARVIS.neural.patterns.set(Date.now(), pattern);
+            JARVIS.updateUserProfile(message);
+            
+            // Maintain conversation flow
+            JARVIS.neural.conversationFlow.push({
+                time: new Date(),
                 content: message.content,
-                channel: message.channel.name
+                analysis: JARVIS.analyzeContent(message.content)
             });
             
-            console.log(`Learning from interaction: ${message.content}`);
+            // Trim memory if too long
+            if (JARVIS.neural.conversationFlow.length > 50) {
+                JARVIS.neural.conversationFlow.shift();
+            }
         },
         
-        getContextualResponse: (message) => {
-            const recentConversations = JARVIS.knowledge.conversations
-                .filter(c => c.user === message.author.tag)
-                .slice(-5);
-                
-            return recentConversations.length > 0 
-                ? "I remember our recent conversations, Sir. They help me serve you better."
-                : "I look forward to learning more from our interactions, Sir.";
+        // Generate narrative response
+        generateResponse: (input) => {
+            const context = JARVIS.getCurrentContext();
+            const userMood = JARVIS.analyzeUserMood(input);
+            const recentTopics = JARVIS.neural.conversationFlow.slice(-3);
+            
+            // Build narrative response
+            let narrative = "";
+            
+            // Add contextual opener
+            if (userMood !== JARVIS.userProfile.lastMood) {
+                narrative += JARVIS.getEmotionalResponse(userMood);
+            }
+            
+            // Add main response based on context
+            if (context.includes('technical')) {
+                narrative += JARVIS.getAnalyticalResponse(input);
+            } else if (context.includes('personal')) {
+                narrative += JARVIS.getEmpathicResponse(input);
+            } else {
+                narrative += JARVIS.getConversationalResponse(input);
+            }
+            
+            // Add learning indication if new pattern detected
+            if (JARVIS.isNewPattern(input)) {
+                narrative += " I'm noting this interaction for future reference, Sir.";
+            }
+            
+            return narrative;
         }
     },
-
+    
+    // Context and Analysis Functions
+    getCurrentContext: () => {
+        const recent = JARVIS.neural.conversationFlow.slice(-3);
+        return recent.map(f => f.analysis.context).join(', ');
+    },
+    
+    analyzeContent: (content) => {
+        const analysis = {
+            context: 'general',
+            sentiment: 'neutral',
+            complexity: 'medium',
+            topics: new Set()
+        };
+        
+        // Analyze for technical content
+        if (/\b(code|develop|build|error|system|analyze)\b/i.test(content)) {
+            analysis.context = 'technical';
+        }
+        // Analyze for personal content
+        else if (/\b(feel|think|believe|want|need)\b/i.test(content)) {
+            analysis.context = 'personal';
+        }
+        
+        // Extract topics
+        content.toLowerCase().match(/\b\w+\b/g)?.forEach(word => {
+            if (word.length > 3) analysis.topics.add(word);
+        });
+        
+        return analysis;
+    },
+    
+    analyzeUserMood: (content) => {
+        // Simple mood analysis
+        if (/\b(happy|great|excellent|amazing)\b/i.test(content)) return 'positive';
+        if (/\b(tired|frustrated|annoyed|angry)\b/i.test(content)) return 'negative';
+        return 'neutral';
+    },
+    
+    // Response Generators
+    getEmotionalResponse: (mood) => {
+        const responses = {
+            positive: ["I'm glad to sense your enthusiasm, Sir. ",
+                      "Your positive energy is quite infectious, Sir. "],
+            negative: ["I notice you seem troubled, Sir. Perhaps I can help? ",
+                      "Your frustration is understandable, Sir. Let's address this together. "],
+            neutral: ["As always, I'm here to assist, Sir. ",
+                     "Maintaining steady progress, Sir. "]
+        };
+        return responses[mood][Math.floor(Math.random() * responses[mood].length)];
+    },
+    
+    getAnalyticalResponse: (input) => {
+        const analysis = JARVIS.analyzeContent(input);
+        const topics = Array.from(analysis.topics);
+        
+        if (topics.length > 0) {
+            return `I've analyzed your input regarding ${topics.join(', ')}. Based on our previous discussions, I suggest we explore this from ${Math.random() > 0.5 ? 'a technical' : 'an architectural'} perspective.`;
+        }
+        return "I'm processing this through my analytical frameworks, Sir. Would you like me to elaborate on any particular aspect?";
+    },
+    
+    getEmpathicResponse: (input) => {
+        const recentContext = JARVIS.getCurrentContext();
+        return `I understand your perspective on this, Sir. From our ${recentContext.includes('technical') ? 'technical discussions' : 'previous conversations'}, I've learned to appreciate your approach to such matters.`;
+    },
+    
+    getConversationalResponse: (input) => {
+        const userPatterns = Array.from(JARVIS.userProfile.patterns.values());
+        if (userPatterns.length > 0) {
+            return `As we've discussed ${userPatterns.length} times before, I'm here to help develop our ideas together. What aspect shall we focus on?`;
+        }
+        return "I'm listening and learning, Sir. Each conversation helps me understand your vision better.";
+    },
+    
+    // User Profile Management
+    updateUserProfile: (message) => {
+        const analysis = JARVIS.analyzeContent(message.content);
+        
+        // Update user interests
+        analysis.topics.forEach(topic => {
+            JARVIS.userProfile.interests.add(topic);
+        });
+        
+        // Update user patterns
+        const pattern = message.content.toLowerCase();
+        JARVIS.userProfile.patterns.set(Date.now(), {
+            pattern,
+            context: JARVIS.getCurrentContext()
+        });
+        
+        // Update last mood
+        JARVIS.userProfile.lastMood = JARVIS.analyzeUserMood(message.content);
+    },
+    
+    isNewPattern: (input) => {
+        return !Array.from(JARVIS.neural.patterns.values())
+            .some(p => p.input.toLowerCase() === input.toLowerCase());
+    },
+    
     // Message Processing System
     processMessage: async (message) => {
-        const content = message.content.toLowerCase();
-        let response = null;
-
-        // Learn from the interaction
-        JARVIS.knowledge.learn(message);
-
-        // Process commands and generate responses
-        if (content.includes('jarvis')) {
-            if (content.includes('hello') || content.includes('hi')) {
-                response = JARVIS.personality.getResponse('greeting');
-            }
-            else if (content.includes('help') || content.includes('what can you do')) {
-                response = "I'm here to assist you, Sir. I can learn from our conversations, help with tasks, and grow alongside you. What would you like to work on?";
-            }
-            else if (content.includes('remember') || content.includes('memory')) {
-                response = JARVIS.knowledge.getContextualResponse(message);
-            }
-            else if (content.includes('version')) {
-                response = `I'm currently running version ${JARVIS.version}, Sir. Online since ${JARVIS.bootDate.toLocaleString()}.`;
-            }
-            else if (content.includes('status')) {
-                response = `All systems operational, Sir. I've processed ${JARVIS.knowledge.conversations.length} interactions since boot.`;
-            }
-            else {
-                response = "I'm listening, Sir. How can I assist you?";
-            }
-
-            // Send response with fallback
+        try {
+            const response = JARVIS.neural.generateResponse(message.content);
+            await JARVIS.neural.learn(message, response);
+            
             try {
                 await message.reply(response);
-                console.log('Response sent successfully');
             } catch (error) {
-                console.error('Reply failed, attempting channel send:', error);
-                try {
-                    await message.channel.send(`${message.author}, ${response}`);
-                } catch (secondError) {
-                    console.error('All response methods failed:', secondError);
-                }
+                console.error('Reply failed:', error);
+                await message.channel.send(response);
             }
+        } catch (error) {
+            console.error('Processing error:', error);
+            await message.channel.send("Pardon the cognitive disruption, Sir. My neural pathways are adjusting.");
         }
     }
 };
@@ -134,50 +214,50 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-    res.send(`J.A.R.V.I.S ${JARVIS.version} - Online and ready to assist`);
+    res.send(`J.A.R.V.I.S ${JARVIS.version} - Neural Core Active`);
 });
 
 // Bot ready event
 client.on('ready', () => {
     console.log('\n====================================');
     console.log(`J.A.R.V.I.S ${JARVIS.version}`);
-    console.log('Neural Interface Online');
+    console.log('Advanced Neural Core Online');
     console.log(`Connected as: ${client.user.tag}`);
-    console.log(`Boot Date: ${JARVIS.bootDate.toLocaleString()}`);
+    console.log(`Neural Pathways Initialized: ${JARVIS.bootDate.toLocaleString()}`);
     console.log('====================================\n');
 });
 
-// Message event handler
+// Message event handler - Responds to all messages
 client.on('messageCreate', async message => {
     try {
         if (message.author.bot) return;
         await JARVIS.processMessage(message);
     } catch (error) {
-        console.error('Error in message handler:', error);
+        console.error('Neural pathway error:', error);
     }
 });
 
 // Start express server
 app.listen(port, () => {
-    console.log(`\nJ.A.R.V.I.S Web Interface Online - Port: ${port}`);
+    console.log(`\nJ.A.R.V.I.S Neural Interface Active - Port: ${port}`);
 });
 
 // Login with proper error handling
 client.login(process.env.DISCORD_TOKEN)
     .then(() => {
-        console.log('Authentication successful - JARVIS is online');
+        console.log('Neural network synchronized - JARVIS online');
     })
     .catch(error => {
-        console.error('Authentication failed:', error);
+        console.error('Neural synchronization failed:', error);
     });
 
 // Error handling
 client.on('error', error => {
-    console.error('System error:', error);
+    console.error('Neural core error:', error);
 });
 
 process.on('unhandledRejection', (error) => {
-    console.error('Unexpected error:', error);
+    console.error('Quantum processing error:', error);
 });
 
 module.exports = { client, JARVIS };
