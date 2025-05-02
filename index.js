@@ -1,4 +1,6 @@
 const { Client, GatewayIntentBits } = require('discord.js');
+const express = require('express');
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -8,8 +10,6 @@ const client = new Client({
     ]
 });
 
-// Add this port listening code
-const express = require('express');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -21,7 +21,6 @@ app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
 
-// Your existing bot code
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
 });
