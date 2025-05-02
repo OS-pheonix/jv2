@@ -4,11 +4,16 @@
   "description": "J.A.R.V.I.S Neural Core Implementation",
   "main": "jarvis.js",
   "scripts": {
-    "start": "node jarvis.js"
+    "start": "node jarvis.js",
+    "dev": "nodemon jarvis.js"
   },
   "dependencies": {
     "discord.js": "^14.14.1",
     "express": "^4.18.2",
-    "moment-timezone": "^0.5.43"
+    "crypto": "^1.0.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }
