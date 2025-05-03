@@ -1,6 +1,5 @@
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const crypto = require('crypto');
-require('dotenv').config();
 
 // Initialize the client with required intents
 const client = new Client({
@@ -21,7 +20,7 @@ const JARVIS = {
     security: {
         maxRetries: 3,
         lockoutDuration: 15 * 60 * 1000, // 15 minutes
-        allowedOrigins: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [],
+        allowedOrigins: [], // We'll populate this from environment if needed
         activeTokens: new Set(),
         blockedIPs: new Set(),
         
@@ -75,7 +74,7 @@ const JARVIS = {
             return 'conversation';
         },
         
-        // Sentiment Analysis
+        // Simplified sentiment analysis
         analyzeSentiment: (input) => {
             const positiveWords = /\b(good|great|excellent|amazing|love|happy|perfect|fantastic|awesome)\b/i;
             const negativeWords = /\b(bad|wrong|terrible|awful|hate|sad|angry|frustrated|disappointed)\b/i;
@@ -85,18 +84,15 @@ const JARVIS = {
             return 'neutral';
         },
         
-        // Complexity Assessment
+        // Basic complexity assessment
         assessComplexity: (input) => {
             const words = input.split(/\s+/).length;
-            const technicalTerms = /\b(algorithm|function|system|process|analysis|implementation|development|architecture)\b/gi;
-            const matches = input.match(technicalTerms) || [];
-            
-            if (words > 20 || matches.length > 2) return 'high';
-            if (words > 10 || matches.length > 0) return 'medium';
+            if (words > 20) return 'high';
+            if (words > 10) return 'medium';
             return 'low';
         },
         
-        // Topic Identification
+        // Topic identification
         identifyTopics: (input) => {
             const topics = new Set();
             const topicPatterns = {
@@ -112,13 +108,12 @@ const JARVIS = {
             return topics;
         },
         
-        // Context Determination
+        // Context determination
         determineContext: (input) => {
             const contexts = {
                 technical: /\b(code|program|error|bug|system|function)\b/i,
                 planning: /\b(plan|design|create|develop|implement)\b/i,
                 question: /\b(how|what|why|when|where|who)\b/i,
-                security: /\b(secure|protect|safety|encryption)\b/i,
                 personal: /\b(feel|think|believe|want|need)\b/i
             };
             
@@ -128,7 +123,7 @@ const JARVIS = {
             return 'general';
         },
         
-        // Entity Extraction
+        // Entity extraction
         extractEntities: (input) => {
             const entities = {
                 dates: input.match(/\b\d{4}-\d{2}-\d{2}\b/g) || [],
@@ -145,23 +140,11 @@ const JARVIS = {
         if (message.author.bot) return;
         
         try {
-            // Security check
-            if (!message.guild && !JARVIS.security.allowedOrigins.includes(message.author.id)) {
-                console.warn(`Blocked message from unauthorized source: ${message.author.id}`);
-                return;
-            }
-            
-            // Generate message hash for integrity
-            const messageHash = crypto.createHash('sha256')
-                .update(message.content)
-                .digest('hex');
-            
             // Analyze input
             const analysis = JARVIS.intelligence.analyzeInput(message.content);
             
             // Store in memory
-            JARVIS.memory.set(`msg_${messageHash}`, {
-                hash: messageHash,
+            JARVIS.memory.set(`msg_${Date.now()}`, {
                 content: message.content,
                 analysis: analysis,
                 author: message.author.id,
@@ -200,7 +183,7 @@ client.on('error', error => {
     console.error('Neural pathway error:', error);
     JARVIS.memory.set('lastError', {
         timestamp: Date.now(),
-        error: crypto.createHash('sha256').update(error.message).digest('hex')
+        error: error.message
     });
 });
 
@@ -211,9 +194,24 @@ process.on('SIGTERM', () => {
     process.exit(0);
 });
 
-// Start the system
-client.login(process.env.TOKEN)
+// Get token from environment variables
+const TOKEN = process.env.DISCORD_TOKEN || process.env.TOKEN;
+
+if (!TOKEN) {
+    console.error('Critical Error: Neural synapses failed - Discord token not found!');
+    console.error('Please configure DISCORD_TOKEN in Render environment variables.');
+    process.exit(1);
+}
+
+// Start the system with enhanced error handling
+client.login(TOKEN)
     .then(() => console.log('Neural network synchronized'))
-    .catch(error => console.error('Neural synchronization failed:', error));
+    .catch(error => {
+        console.error('Neural synchronization failed:', error);
+        if (error.message.includes('TOKEN')) {
+            console.error('Token validation failed - Please check your Discord token in Render settings.');
+        }
+        process.exit(1);
+    });
 
 module.exports = { client, JARVIS };
