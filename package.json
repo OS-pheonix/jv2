@@ -1,7 +1,7 @@
 {
   "name": "jarvis-ai",
-  "version": "3.0.1",
-  "description": "JARVIS Discord Bot - Enhanced Build",
+  "version": "3.0.2",
+  "description": "JARVIS Discord Bot - Enhanced Personality Build",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
