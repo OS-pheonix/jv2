@@ -1,59 +1,34 @@
-const { Client, GatewayIntentBits, Partials } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
+const { JARVIS, initializeJARVIS } = require('./jarvis-core');
 
-// Create Discord client with ALL required intents
+// Create client with all necessary intents
 const client = new Client({
     intents: [
-        GatewayIntentBits.Guilds,               // For server events
-        GatewayIntentBits.GuildMessages,        // For message events
-        GatewayIntentBits.MessageContent,       // For message content
-        GatewayIntentBits.GuildMembers,         // For member events
-        GatewayIntentBits.DirectMessages,       // For DMs
-        GatewayIntentBits.GuildPresences,       // For presence updates
-        GatewayIntentBits.GuildMessageReactions // For reactions
-    ],
-    partials: [
-        Partials.Channel,   // Required for DM events
-        Partials.Message,   // For message events
-        Partials.Reaction   // For reaction events
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildPresences,
+        GatewayIntentBits.GuildMessageReactions
     ]
 });
 
-// Error handling for intent issues
-client.on('error', error => {
-    if (error.message.includes('BitField')) {
-        console.error('Intent Configuration Error:', error);
-        console.log('Attempting to reconnect with corrected intents...');
-        
-        // Attempt reconnection
-        client.destroy();
-        client.login(process.env.DISCORD_TOKEN)
-            .then(() => console.log('Successfully reconnected with corrected intents'))
-            .catch(err => console.error('Reconnection failed:', err));
+// Initialize JARVIS when client is ready
+client.once('ready', async () => {
+    await initializeJARVIS(client);
+});
+
+// Message handling
+client.on('messageCreate', async message => {
+    try {
+        await JARVIS.processMessage(message);
+    } catch (error) {
+        console.error('Critical error:', error);
     }
 });
 
-// The rest of your JARVIS code goes here...
-
-// Modified login with better error handling
+// Login with error handling
 client.login(process.env.DISCORD_TOKEN)
-    .then(() => {
-        console.log('Authentication successful - All intents properly configured');
-        
-        // Verify intents
-        const configuredIntents = client.options.intents;
-        console.log('Configured Intents:', 
-            Object.keys(GatewayIntentBits)
-                .filter(intent => configuredIntents.has(GatewayIntentBits[intent]))
-                .join(', ')
-        );
-    })
-    .catch(error => {
-        if (error.message.includes('BitField')) {
-            console.error('Intent Configuration Error. Please check the following:');
-            console.log('1. All required intents are properly defined');
-            console.log('2. Intents are enabled in Discord Developer Portal');
-            console.log('3. Bot token has required permissions');
-        } else {
-            console.error('Login Error:', error);
-        }
-    });
+    .then(() => console.log('Authentication successful - JARVIS is online'))
+    .catch(console.error);
