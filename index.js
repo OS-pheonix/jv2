@@ -1,67 +1,28 @@
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
-const { config } = require('dotenv');
-config();
+// Load environment variables first
+require('dotenv').config();
 
-// Initialize the client with required intents
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
-    ]
-});
+// Import JARVIS system
+const { JARVIS, client } = require('./jarvis');
 
-// Core system configuration
-const system = {
-    memory: new Collection(),  // Initialize memory collection properly
-    version: '1.0.0',
-    startTime: Date.now(),
-    
-    // Initialize core functions
-    init() {
-        this.memory.set('bootTime', this.startTime);
-        this.memory.set('status', 'online');
-        return this;
+// Start the application
+const startServer = async () => {
+    try {
+        await JARVIS.initialize();
+    } catch (error) {
+        console.error('Failed to start JARVIS:', error);
+        process.exit(1);
     }
 };
 
-// Event handler for when the bot is ready
-client.once('ready', () => {
-    console.log(`System initialized - Version ${system.version}`);
-    system.init();
-});
+// Start JARVIS
+startServer();
 
-// Message handler
-client.on('messageCreate', async message => {
-    if (message.author.bot) return;
-    
-    try {
-        // Store message in memory
-        system.memory.set(`msg_${message.id}`, {
-            content: message.content,
-            author: message.author.id,
-            timestamp: Date.now()
-        });
-        
-        // Process message
-        await message.reply('Message received and processed.');
-    } catch (error) {
-        console.error('Error processing message:', error);
+// Error handling
+process.on('unhandledRejection', error => {
+    console.error('Unhandled error:', error);
+    if (error.message.includes('token')) {
+        console.error('Token-related error detected. Please check your Discord token configuration.');
     }
 });
 
-// Error handler
-client.on('error', error => {
-    console.error('Client error:', error);
-    system.memory.set('lastError', {
-        timestamp: Date.now(),
-        error: error.message
-    });
-});
-
-// Start the client
-client.login(process.env.TOKEN)
-    .catch(error => console.error('Login failed:', error));
-
-module.exports = { client, system };
+module.exports = { client, JARVIS };
