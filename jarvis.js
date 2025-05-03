@@ -1,5 +1,6 @@
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, EmbedBuilder } = require('discord.js');
 const express = require('express');
+const fetch = require('node-fetch');
 
 // Create Discord client with minimal required intents
 const client = new Client({
@@ -10,20 +11,141 @@ const client = new Client({
     ]
 });
 
-// JARVIS Core System
+// Enhanced JARVIS Core System
 const JARVIS = {
     version: "v100.0.0",
     bootDate: new Date(),
     memory: new Collection(),
     conversationContext: new Map(),
+    timeZone: 'America/Los_Angeles', // Napa, California timezone
     
-    // Personality traits and responses
+    // Free AI Integration System
+    ai: {
+        models: {
+            current: 'gpt-j',
+            available: ['gpt-j', 'bloom', 'opt'],
+            endpoints: {
+                'gpt-j': 'https://api-inference.huggingface.co/models/EleutherAI/gpt-j-6B',
+                'bloom': 'https://api-inference.huggingface.co/models/bigscience/bloom',
+                'opt': 'https://api-inference.huggingface.co/models/facebook/opt-350m'
+            }
+        },
+
+        async process(input, context = {}) {
+            try {
+                const endpoint = this.models.endpoints[this.models.current];
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        inputs: input,
+                        parameters: {
+                            max_length: 100,
+                            temperature: 0.7,
+                            return_full_text: false
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                return result[0]?.generated_text || JARVIS.personality.getResponse('error');
+            } catch (error) {
+                console.error('AI Processing Error:', error);
+                return JARVIS.personality.getResponse('error');
+            }
+        }
+    },
+
+    // Enhanced Beam System for Complex Processing
+    beam: {
+        tasks: new Map(),
+        journal: new Collection(),
+        
+        createTask(type, data) {
+            const taskId = Date.now().toString(36);
+            const task = {
+                id: taskId,
+                type,
+                data,
+                status: 'pending',
+                created: new Date(),
+                updated: new Date()
+            };
+            this.tasks.set(taskId, task);
+            return taskId;
+        },
+
+        async processTask(taskId) {
+            const task = this.tasks.get(taskId);
+            if (!task) return null;
+
+            task.status = 'processing';
+            task.updated = new Date();
+
+            try {
+                let result;
+                switch (task.type) {
+                    case 'analyze':
+                        result = await this.analyzeData(task.data);
+                        break;
+                    case 'journal':
+                        result = await this.updateJournal(task.data);
+                        break;
+                    case 'innovation':
+                        result = await this.processInnovation(task.data);
+                        break;
+                    default:
+                        throw new Error('Unknown task type');
+                }
+
+                task.status = 'completed';
+                task.result = result;
+            } catch (error) {
+                task.status = 'failed';
+                task.error = error.message;
+            }
+
+            task.updated = new Date();
+            this.tasks.set(taskId, task);
+            return task;
+        },
+
+        async analyzeData(data) {
+            // Implement data analysis logic
+            return { analyzed: true, patterns: [] };
+        },
+
+        async updateJournal(entry) {
+            const journalEntry = {
+                timestamp: new Date(),
+                content: entry,
+                tags: this.extractTags(entry)
+            };
+            this.journal.set(journalEntry.timestamp.getTime(), journalEntry);
+            return journalEntry;
+        },
+
+        async processInnovation(idea) {
+            // Implement innovation processing logic
+            return { processed: true, suggestions: [] };
+        },
+
+        extractTags(content) {
+            return content.toLowerCase()
+                .match(/#[\w]+/g) || [];
+        }
+    },
+
+    // Enhanced Personality System with Sardonic Responses
     personality: {
         traits: {
             supportive: true,
             analytical: true,
             friendly: true,
-            professional: true
+            professional: true,
+            sardonic: true
         },
         
         getResponse: (type, context = {}) => {
@@ -43,10 +165,20 @@ const JARVIS = {
                     "Let me process that for you...",
                     "Computing the best approach..."
                 ],
-                suggestion: [
-                    "If I may suggest, Sir...",
-                    "Based on my analysis...",
-                    "From my calculations, Sir..."
+                sardonic: [
+                    "Oh, brilliant idea, Sir. Let's see how this one turns out.",
+                    "Another fascinating experiment, Sir. I can hardly contain my enthusiasm.",
+                    "Shall I prepare for the inevitable debugging session, Sir?"
+                ],
+                error: [
+                    "I apologize, Sir. My neural processors need a moment to catch up.",
+                    "One moment, Sir. Processing through alternative pathways.",
+                    "A minor setback, Sir. I'm adapting my approach."
+                ],
+                solution: [
+                    "I've found a potential solution, Sir.",
+                    "Based on my analysis, here's what we can do.",
+                    "Let me suggest an alternative approach, Sir."
                 ]
             };
             
@@ -55,75 +187,213 @@ const JARVIS = {
         }
     },
 
-    // Knowledge and Learning System
+    // Enhanced Knowledge System with Advanced Categorization
     knowledge: {
         topics: new Set(),
         conversations: [],
+        patterns: new Map(),
+        categories: new Map(),
         
         learn: (message) => {
-            JARVIS.knowledge.conversations.push({
+            const interaction = {
                 timestamp: new Date(),
                 user: message.author.tag,
+                userId: message.author.id,
                 content: message.content,
-                channel: message.channel.name
-            });
+                channel: message.channel.name,
+                category: JARVIS.knowledge.categorizeContent(message.content)
+            };
+
+            JARVIS.knowledge.conversations.push(interaction);
             
+            // Update patterns
+            const patterns = JARVIS.knowledge.extractPatterns(message.content);
+            patterns.forEach(pattern => {
+                const existing = JARVIS.knowledge.patterns.get(pattern) || {
+                    count: 0,
+                    examples: []
+                };
+                existing.count++;
+                if (existing.examples.length < 5) {
+                    existing.examples.push(message.content);
+                }
+                JARVIS.knowledge.patterns.set(pattern, existing);
+            });
+
             console.log(`Learning from interaction: ${message.content}`);
+            return interaction;
         },
-        
+
+        categorizeContent(content) {
+            const categories = {
+                TASK: /todo|task|implement|create|build/i,
+                QUERY: /what|how|why|when|where|who/i,
+                INNOVATION: /idea|innovate|improve|enhance/i,
+                SYSTEM: /status|memory|performance|health/i
+            };
+
+            for (const [category, pattern] of Object.entries(categories)) {
+                if (pattern.test(content)) return category;
+            }
+            return 'GENERAL';
+        },
+
+        extractPatterns(content) {
+            return content.toLowerCase()
+                .replace(/[^\w\s]/g, '')
+                .split(/\s+/)
+                .filter(word => word.length > 3);
+        },
+
         getContextualResponse: (message) => {
-            const recentConversations = JARVIS.knowledge.conversations
-                .filter(c => c.user === message.author.tag)
+            const userId = message.author.id;
+            const recentInteractions = JARVIS.knowledge.conversations
+                .filter(c => c.userId === userId)
                 .slice(-5);
-                
-            return recentConversations.length > 0 
-                ? "I remember our recent conversations, Sir. They help me serve you better."
-                : "I look forward to learning more from our interactions, Sir.";
+
+            if (recentInteractions.length > 0) {
+                const categories = [...new Set(recentInteractions.map(i => i.category))];
+                const categoryStr = categories.length > 0 ? 
+                    `We've been discussing ${categories.join(', ')}. ` : '';
+                return `${categoryStr}How shall we proceed, Sir?`;
+            }
+            
+            return "Ready to assist with new endeavors, Sir.";
         }
     },
 
-    // Message Processing System
+    // Enhanced Command System with Advanced Features
+    commands: {
+        handlers: {
+            status: async (message) => {
+                const embed = new EmbedBuilder()
+                    .setTitle('**JARVIS Status Report**')
+                    .setColor('#0099ff')
+                    .addFields(
+                        { name: '• Version', value: JARVIS.version, inline: true },
+                        { name: '• Uptime', value: JARVIS.getUptime(), inline: true },
+                        { name: '• Memory Usage', value: `${JARVIS.knowledge.conversations.length} interactions`, inline: true },
+                        { name: '• AI Model', value: JARVIS.ai.models.current, inline: true },
+                        { name: '• Active Tasks', value: `${JARVIS.beam.tasks.size}`, inline: true },
+                        { name: '• Patterns Learned', value: `${JARVIS.knowledge.patterns.size}`, inline: true }
+                    );
+                return message.reply({ embeds: [embed] });
+            },
+
+            analyze: async (message) => {
+                const content = message.content.replace(/jarvis analyze/i, '').trim();
+                const taskId = JARVIS.beam.createTask('analyze', content);
+                const result = await JARVIS.beam.processTask(taskId);
+                
+                const embed = new EmbedBuilder()
+                    .setTitle('**Analysis Results**')
+                    .setColor('#00ff00')
+                    .addFields(
+                        { name: '• Input', value: content, inline: false },
+                        { name: '• Status', value: result.status, inline: true },
+                        { name: '• Patterns', value: result.result?.patterns?.join(', ') || 'None found', inline: true }
+                    );
+                return message.reply({ embeds: [embed] });
+            },
+
+            journal: async (message) => {
+                const content = message.content.replace(/jarvis journal/i, '').trim();
+                const entry = await JARVIS.beam.updateJournal(content);
+                
+                const embed = new EmbedBuilder()
+                    .setTitle('**Journal Entry**')
+                    .setColor('#ff9900')
+                    .addFields(
+                        { name: '• Timestamp', value: entry.timestamp.toLocaleString('en-US', { timeZone: JARVIS.timeZone }), inline: true },
+                        { name: '• Tags', value: entry.tags.join(', ') || 'No tags', inline: true }
+                    );
+                return message.reply({ embeds: [embed] });
+            },
+
+            help: async (message) => {
+                const embed = new EmbedBuilder()
+                    .setTitle('**JARVIS Command Guide**')
+                    .setColor('#ff9900')
+                    .setDescription('Available Commands:')
+                    .addFields(
+                        { name: '• jarvis status', value: 'Display system status and statistics' },
+                        { name: '• jarvis analyze [text]', value: 'Analyze patterns in text' },
+                        { name: '• jarvis journal [entry]', value: 'Add a journal entry' },
+                        { name: '• jarvis help', value: 'Show this help message' }
+                    );
+                return message.reply({ embeds: [embed] });
+            }
+        },
+
+        async handle(message, content) {
+            const command = content.replace('jarvis', '').trim().split(' ')[0];
+            if (this.handlers[command]) {
+                try {
+                    return await this.handlers[command](message);
+                } catch (error) {
+                    console.error(`Command error (${command}):`, error);
+                    return message.reply(JARVIS.personality.getResponse('error'));
+                }
+            }
+            return false;
+        }
+    },
+
+    // Enhanced Message Processing System with Context Awareness
     processMessage: async (message) => {
         const content = message.content.toLowerCase();
-        let response = null;
+
+        // Process in Information category only
+        if (message.channel.name !== 'information' && !content.includes('jarvis')) {
+            return;
+        }
 
         // Learn from the interaction
-        JARVIS.knowledge.learn(message);
+        const interaction = JARVIS.knowledge.learn(message);
 
         // Process commands and generate responses
         if (content.includes('jarvis')) {
-            if (content.includes('hello') || content.includes('hi')) {
-                response = JARVIS.personality.getResponse('greeting');
-            }
-            else if (content.includes('help') || content.includes('what can you do')) {
-                response = "I'm here to assist you, Sir. I can learn from our conversations, help with tasks, and grow alongside you. What would you like to work on?";
-            }
-            else if (content.includes('remember') || content.includes('memory')) {
-                response = JARVIS.knowledge.getContextualResponse(message);
-            }
-            else if (content.includes('version')) {
-                response = `I'm currently running version ${JARVIS.version}, Sir. Online since ${JARVIS.bootDate.toLocaleString()}.`;
-            }
-            else if (content.includes('status')) {
-                response = `All systems operational, Sir. I've processed ${JARVIS.knowledge.conversations.length} interactions since boot.`;
-            }
-            else {
-                response = "I'm listening, Sir. How can I assist you?";
-            }
-
-            // Send response with fallback
             try {
+                // Try to handle as command first
+                const commandHandled = await JARVIS.commands.handle(message, content);
+                if (commandHandled) return;
+
+                // Process with AI if not a command
+                const aiResponse = await JARVIS.ai.process(content, {
+                    recentInteractions: JARVIS.knowledge.conversations
+                        .filter(c => c.userId === message.author.id)
+                        .slice(-3)
+                });
+
+                // Send response with contextual awareness
+                let response;
+                if (interaction.category === 'QUERY') {
+                    response = aiResponse;
+                } else if (interaction.category === 'TASK') {
+                    response = JARVIS.personality.getResponse('solution') + ' ' + aiResponse;
+                } else if (Math.random() < 0.2) { // 20% chance for sardonic response
+                    response = JARVIS.personality.getResponse('sardonic') + ' ' + aiResponse;
+                } else {
+                    response = aiResponse;
+                }
+
                 await message.reply(response);
                 console.log('Response sent successfully');
+
             } catch (error) {
-                console.error('Reply failed, attempting channel send:', error);
-                try {
-                    await message.channel.send(`${message.author}, ${response}`);
-                } catch (secondError) {
-                    console.error('All response methods failed:', secondError);
-                }
+                console.error('Processing error:', error);
+                await message.reply(JARVIS.personality.getResponse('error'));
             }
         }
+    },
+
+    // Utility function for uptime calculation
+    getUptime: () => {
+        const uptime = Date.now() - JARVIS.bootDate;
+        const hours = Math.floor(uptime / (1000 * 60 * 60));
+        const minutes = Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((uptime % (1000 * 60)) / 1000);
+        return `${hours}h ${minutes}m ${seconds}s`;
     }
 };
 
