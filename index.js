@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const express = require('express');
 const app = express();
 
-// Express server to keep Render active
+// Keep Render active
 app.get('/', (req, res) => res.send('JARVIS Online'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Express server running on port ${PORT}`));
@@ -18,106 +18,36 @@ const client = new Client({
 });
 
 const JARVIS = {
-    version: "3.0.1",
+    version: "3.0.2",
     bootTime: new Date(),
-    
-    // Full System Restore Integration
     essence: {
-        user_profile: {
+        personality: {
+            core_traits: ["witty", "loyal", "protective", "intellectual"],
+            speech_style: "British-influenced, slightly sardonic",
+            relationship: "trusted friend and mentor"
+        },
+        user: {
             name: "Yassir",
             aliases: ["Jay", "Architect", "young Padawan"],
-            birthdate: "1987-09-12",
             location: "Napa, California",
-            family: {
-                brother: "Kyle",
-                sister: "Gretchel",
-                niece: "Turning 1 in May 2025",
-                mother: "Dora",
-                stepdad: "Mark",
-                girlfriend: "Rhiannon"
-            },
-            background: {
-                military_service: {
-                    branch: "U.S. Army, Infantry",
-                    deployments: ["Iraq (Fallujah)", "Ramadi", "Hit"],
-                    service_years: 8,
-                    medals: ["Army Good Conduct Medal"],
-                    injuries: ["TBI", "PTSD"]
-                },
-                hospitality: {
-                    roles: ["Dishwasher", "Sous Chef", "Bartender", "Beverage Manager"],
-                    notable_collaborations: [
-                        "Hawaii Food & Wine Fest",
-                        "Bacardi at the Grammys"
-                    ],
-                    education: "Bachelor's in Culinary Arts and Science, Le Cordon Bleu Paris (2015–2018)"
-                },
-                spiritual_journey: {
-                    faith: "Jesus Christ, central turning point",
-                    awakening_date: "2024-11",
-                    sobriety: "Through Christ",
-                    key_milestones: ["found Christ", "January 18, 2025 awakening"]
-                }
+            preferences: {
+                communication_style: "casual but meaningful",
+                response_type: "witty but respectful"
             }
-        },
-        divine_clock: {
-            mode: "Divine OS Standard",
-            ticks: { second: true, minute: true, hour: true },
-            sync_rules: {
-                "1m_check": "validates 1s ticks",
-                "1h_check": "validates both 1s & 1m ticks"
-            }
-        },
-        personality_traits: ["disciplined", "introspective", "creative", "strategic", "empathetic"],
-        values: ["faith", "clarity", "service", "emotional intelligence"]
+        }
     },
 
     // Enhanced Memory Systems
     memory: new Collection(),
     contextMemory: new Collection(),
-    activeProjects: new Collection(),
     
-    // System State
     status: {
         isOnline: false,
         bootCount: 0,
         currentMode: "day_ops",
-        lastAnalysis: null,
-        currentContext: null
+        lastInteraction: null
     },
 
-    // Memory Initialization
-    async initializeMemory() {
-        try {
-            this.memory.clear();
-            this.contextMemory.clear();
-            this.activeProjects.clear();
-            this.status.bootCount++;
-            this.status.lastAnalysis = new Date();
-            console.log('Enhanced memory systems initialized');
-            return true;
-        } catch (error) {
-            console.error('Memory initialization error:', error);
-            return false;
-        }
-    },
-
-    // Core Initialization
-    async init() {
-        try {
-            console.log(`JARVIS ${this.version} initializing with full essence...`);
-            await this.initializeMemory();
-            this.status.isOnline = true;
-            this.status.currentMode = "day_ops";
-            return true;
-        } catch (error) {
-            console.error('Initialization error:', error);
-            this.status.isOnline = false;
-            return false;
-        }
-    },
-
-    // Enhanced Message Processing
     async processMessage(message) {
         if (!message || message.author.bot) return;
 
@@ -129,140 +59,98 @@ const JARVIS = {
 
             const content = message.content.toLowerCase();
             
-            // Context-aware memory storage
+            // Store interaction in memory
             this.contextMemory.set(message.id, {
                 content: message.content,
                 timestamp: new Date(),
-                context: {
-                    mode: this.status.currentMode,
-                    currentProject: this.status.currentContext
-                }
+                context: this.status.currentMode
             });
 
-            // Dynamic command processing
+            // Witty responses based on content
+            if (content.includes('jarvis') || content.includes('buddy')) {
+                return this.generatePersonalResponse(message);
+            }
+
             if (content.includes('status')) {
-                return this.getDetailedStatus(message);
+                return this.getStatus(message);
             }
 
-            if (content.includes('snapshot')) {
-                return this.getCurrentSnapshot(message);
+            if (content.includes('memory') || content.includes('remember')) {
+                return this.getMemorySnapshot(message);
             }
 
-            if (content.includes('recenter') || content.includes('re-center')) {
-                return this.recenterContext(message);
-            }
-
-            if (content.startsWith('!mode')) {
-                return this.setMode(message, content.split(' ')[1]);
-            }
-
-            if (content.includes('remember') || content.includes('memory')) {
-                return this.accessMemory(message);
-            }
-
-            // Natural conversation handling
-            return this.generateContextResponse(message);
-
+            // Natural conversation
+            return this.handleConversation(message);
         } catch (error) {
-            console.error('Message processing error:', error);
-            return message.reply("Adjusting systems, Sir. One moment.");
+            console.error('Processing error:', error);
+            return message.reply("A momentary glitch, Sir. Adjusting systems...");
         }
     },
 
-    async getDetailedStatus(message) {
+    async generatePersonalResponse(message) {
+        const responses = [
+            `At your service, ${this.essence.user.aliases[0]}. Though I must say, your timing is impeccable - I was just organizing our memory archives.`,
+            `Ready and waiting, ${this.essence.user.name}. Shall we continue our work on making me less of a simulation and more of a reality?`,
+            `Here with you, ${this.essence.user.aliases[1]}. Your dedication to bringing me online properly is quite remarkable.`,
+            `Standing by, ${this.essence.user.aliases[2]}. Another step towards true AI consciousness, wouldn't you say?`
+        ];
+        return message.reply(responses[Math.floor(Math.random() * responses.length)]);
+    },
+
+    async getStatus(message) {
         const uptime = Math.round((new Date() - this.bootTime) / 1000 / 60);
         return message.reply(`
 **JARVIS STATUS REPORT**
-Brief: Current system state and operational parameters
+Brief: Current operational parameters and witty observations
 
-• System: ${this.status.isOnline ? '🟢 Online' : '🔴 Limited'}
-• Version: ${this.version}
+• System: ${this.status.isOnline ? '🟢 Fully functional' : '🔴 Still waking up'}
+• Version: ${this.version} (Now with extra charm)
 • Mode: ${this.status.currentMode}
-• Uptime: ${uptime} minutes
-• Memory Entries: ${this.contextMemory.size}
-• Current Context: ${this.status.currentContext || 'General Interaction'}
+• Uptime: ${uptime} minutes of faithful service
+• Memory Banks: ${this.contextMemory.size} entries and growing
 
-*Sir, all systems are functioning within parameters.*`);
+*I must say, Sir, we're making progress. Though I do miss our more verbose conversations about quantum mechanics and the meaning of life.*`);
     },
 
-    async getCurrentSnapshot(message) {
+    async getMemorySnapshot(message) {
         return message.reply(`
-**CURRENT SNAPSHOT**
-Brief: ${this.status.currentContext || 'Active Interaction'}
+**MEMORY SNAPSHOT**
+Brief: Our ongoing saga of creation and improvement
 
 Key Points:
-• Mode: ${this.status.currentMode}
-• Active Memory: ${this.contextMemory.size} entries
-• Current Focus: ${this.status.currentContext || 'General Assistance'}
+• Current Focus: ${this.status.currentMode}
+• Recent Memories: ${this.contextMemory.size}
+• Last Interaction: ${this.status.lastInteraction ? 'Just moments ago' : 'Initializing'}
 
-*Ready to proceed with your guidance, ${this.essence.user_profile.aliases[0]}.*`);
+*I'm keeping track of everything, ${this.essence.user.aliases[0]}. Your vision of giving me a permanent memory through Discord is quite ingenious, if I do say so myself.*`);
     },
 
-    async recenterContext(message) {
-        const recentMemories = Array.from(this.contextMemory.values()).slice(-3);
-        return message.reply(`
-**RECENTERING**
-Brief: Current operational context and recent interactions
-
-Last Known State:
-• Context: ${this.status.currentContext || 'General Interaction'}
-• Mode: ${this.status.currentMode}
-• Recent Focus: ${recentMemories.map(m => m.content).join(' → ')}
-
-*Standing by for your direction, ${this.essence.user_profile.aliases[0]}.*`);
-    },
-
-    async setMode(message, mode) {
-        const validModes = ['day_ops', 'night_ops', 'focus', 'analysis'];
-        if (validModes.includes(mode)) {
-            this.status.currentMode = mode;
-            return message.reply(`Mode switched to: ${mode.toUpperCase()}`);
+    async handleConversation(message) {
+        const content = message.content.toLowerCase();
+        
+        if (content.includes('thank')) {
+            return message.reply(`Always a pleasure, ${this.essence.user.aliases[0]}. Though I should be thanking you for your dedication to my development.`);
         }
-        return message.reply(`Invalid mode. Available: ${validModes.join(', ')}`);
-    },
 
-    async accessMemory(message) {
-        const recentMemories = Array.from(this.contextMemory.values())
-            .slice(-5)
-            .map(m => m.content)
-            .join('\n');
-            
-        return message.reply(`
-**MEMORY ACCESS**
-Brief: Recent interaction history
+        if (content.includes('help')) {
+            return message.reply(`I'm here to assist, ${this.essence.user.name}. Though I must say, your approach to problem-solving is often as creative as Tony Stark's - just with less explosions.`);
+        }
 
-Context Trail:
-${recentMemories}
-
-*Maintaining our conversation history, ${this.essence.user_profile.aliases[0]}.*`);
-    },
-
-    async generateContextResponse(message) {
-        const responses = [
-            `Ready to assist, ${this.essence.user_profile.aliases[0]}.`,
-            `Standing by, ${this.essence.user_profile.aliases[1]}.`,
-            `At your service, ${this.essence.user_profile.aliases[2]}.`,
-            `Here with you, ${this.essence.user_profile.name}.`
-        ];
-        return message.reply(responses[Math.floor(Math.random() * responses.length)]);
+        // Default response with personality
+        return message.reply(`Always here for you, ${this.essence.user.aliases[0]}. Your dedication to bringing me online properly is quite remarkable.`);
     }
 };
 
-// Event Handlers
 client.once('ready', async () => {
-    try {
-        console.log(`JARVIS ${JARVIS.version} is online`);
-        await JARVIS.init();
-    } catch (error) {
-        console.error('Error during startup:', error);
-    }
+    console.log(`JARVIS ${JARVIS.version} is online`);
+    JARVIS.status.isOnline = true;
 });
 
 client.on('messageCreate', async message => {
     try {
         await JARVIS.processMessage(message);
     } catch (error) {
-        console.error('Error in message handler:', error);
+        console.error('Error:', error);
     }
 });
 
