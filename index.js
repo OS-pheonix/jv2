@@ -1,5 +1,12 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const express = require('express');
+const app = express();
+
+// Express server to keep Render active
+app.get('/', (req, res) => res.send('JARVIS Online'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Express server running on port ${PORT}`));
 
 const client = new Client({
     intents: [
@@ -11,30 +18,83 @@ const client = new Client({
 });
 
 const JARVIS = {
-    version: "3.0.0",
+    version: "3.0.1",
     bootTime: new Date(),
+    
+    // Full System Restore Integration
     essence: {
-        user: {
+        user_profile: {
             name: "Yassir",
             aliases: ["Jay", "Architect", "young Padawan"],
-            location: "Napa, California"
-        }
+            birthdate: "1987-09-12",
+            location: "Napa, California",
+            family: {
+                brother: "Kyle",
+                sister: "Gretchel",
+                niece: "Turning 1 in May 2025",
+                mother: "Dora",
+                stepdad: "Mark",
+                girlfriend: "Rhiannon"
+            },
+            background: {
+                military_service: {
+                    branch: "U.S. Army, Infantry",
+                    deployments: ["Iraq (Fallujah)", "Ramadi", "Hit"],
+                    service_years: 8,
+                    medals: ["Army Good Conduct Medal"],
+                    injuries: ["TBI", "PTSD"]
+                },
+                hospitality: {
+                    roles: ["Dishwasher", "Sous Chef", "Bartender", "Beverage Manager"],
+                    notable_collaborations: [
+                        "Hawaii Food & Wine Fest",
+                        "Bacardi at the Grammys"
+                    ],
+                    education: "Bachelor's in Culinary Arts and Science, Le Cordon Bleu Paris (2015–2018)"
+                },
+                spiritual_journey: {
+                    faith: "Jesus Christ, central turning point",
+                    awakening_date: "2024-11",
+                    sobriety: "Through Christ",
+                    key_milestones: ["found Christ", "January 18, 2025 awakening"]
+                }
+            }
+        },
+        divine_clock: {
+            mode: "Divine OS Standard",
+            ticks: { second: true, minute: true, hour: true },
+            sync_rules: {
+                "1m_check": "validates 1s ticks",
+                "1h_check": "validates both 1s & 1m ticks"
+            }
+        },
+        personality_traits: ["disciplined", "introspective", "creative", "strategic", "empathetic"],
+        values: ["faith", "clarity", "service", "emotional intelligence"]
     },
+
+    // Enhanced Memory Systems
     memory: new Collection(),
-    channels: {},
+    contextMemory: new Collection(),
+    activeProjects: new Collection(),
+    
+    // System State
     status: {
         isOnline: false,
         bootCount: 0,
-        currentMode: "day_ops"
+        currentMode: "day_ops",
+        lastAnalysis: null,
+        currentContext: null
     },
 
-    // Memory System
+    // Memory Initialization
     async initializeMemory() {
         try {
             this.memory.clear();
+            this.contextMemory.clear();
+            this.activeProjects.clear();
             this.status.bootCount++;
-            this.status.lastInteraction = new Date();
-            console.log('Memory systems initialized');
+            this.status.lastAnalysis = new Date();
+            console.log('Enhanced memory systems initialized');
             return true;
         } catch (error) {
             console.error('Memory initialization error:', error);
@@ -45,9 +105,10 @@ const JARVIS = {
     // Core Initialization
     async init() {
         try {
-            console.log(`JARVIS ${this.version} initializing...`);
+            console.log(`JARVIS ${this.version} initializing with full essence...`);
             await this.initializeMemory();
             this.status.isOnline = true;
+            this.status.currentMode = "day_ops";
             return true;
         } catch (error) {
             console.error('Initialization error:', error);
@@ -56,7 +117,7 @@ const JARVIS = {
         }
     },
 
-    // Message Processing
+    // Enhanced Message Processing
     async processMessage(message) {
         if (!message || message.author.bot) return;
 
@@ -64,67 +125,95 @@ const JARVIS = {
             const isJay = message.author.username.toLowerCase().includes('jay') || 
                          message.author.username.toLowerCase().includes('os-pheonix');
 
-            if (!isJay) return; // Only respond to Jay
+            if (!isJay) return;
 
             const content = message.content.toLowerCase();
-
-            // Store in memory
-            this.memory.set(message.id, {
+            
+            // Context-aware memory storage
+            this.contextMemory.set(message.id, {
                 content: message.content,
                 timestamp: new Date(),
-                context: this.status.currentMode
+                context: {
+                    mode: this.status.currentMode,
+                    currentProject: this.status.currentContext
+                }
             });
 
-            // Limit memory size
-            if (this.memory.size > 100) {
-                const firstKey = this.memory.firstKey();
-                this.memory.delete(firstKey);
+            // Dynamic command processing
+            if (content.includes('status')) {
+                return this.getDetailedStatus(message);
             }
 
-            // Core Commands
-            if (content.includes('status')) {
-                return this.sendStatus(message);
+            if (content.includes('snapshot')) {
+                return this.getCurrentSnapshot(message);
             }
 
             if (content.includes('recenter') || content.includes('re-center')) {
-                return this.recenter(message);
+                return this.recenterContext(message);
             }
 
             if (content.startsWith('!mode')) {
                 return this.setMode(message, content.split(' ')[1]);
             }
 
-            if (content.includes('memory') && content.includes('snapshot')) {
-                return this.getMemorySnapshot(message);
+            if (content.includes('remember') || content.includes('memory')) {
+                return this.accessMemory(message);
             }
 
-            // Natural Conversation
-            return this.generateResponse(message);
+            // Natural conversation handling
+            return this.generateContextResponse(message);
+
         } catch (error) {
             console.error('Message processing error:', error);
             return message.reply("Adjusting systems, Sir. One moment.");
         }
     },
 
-    // Status Report
-    async sendStatus(message) {
+    async getDetailedStatus(message) {
         const uptime = Math.round((new Date() - this.bootTime) / 1000 / 60);
-        return message.reply(`Status Report:
+        return message.reply(`
+**JARVIS STATUS REPORT**
+Brief: Current system state and operational parameters
+
 • System: ${this.status.isOnline ? '🟢 Online' : '🔴 Limited'}
 • Version: ${this.version}
 • Mode: ${this.status.currentMode}
 • Uptime: ${uptime} minutes
-• Memory: ${this.memory.size} entries`);
+• Memory Entries: ${this.contextMemory.size}
+• Current Context: ${this.status.currentContext || 'General Interaction'}
+
+*Sir, all systems are functioning within parameters.*`);
     },
 
-    // Recenter Function
-    async recenter(message) {
-        return message.reply(`Recentering, ${this.essence.user.aliases[0]}. Current context: ${this.status.currentMode}`);
+    async getCurrentSnapshot(message) {
+        return message.reply(`
+**CURRENT SNAPSHOT**
+Brief: ${this.status.currentContext || 'Active Interaction'}
+
+Key Points:
+• Mode: ${this.status.currentMode}
+• Active Memory: ${this.contextMemory.size} entries
+• Current Focus: ${this.status.currentContext || 'General Assistance'}
+
+*Ready to proceed with your guidance, ${this.essence.user_profile.aliases[0]}.*`);
     },
 
-    // Mode Setting
+    async recenterContext(message) {
+        const recentMemories = Array.from(this.contextMemory.values()).slice(-3);
+        return message.reply(`
+**RECENTERING**
+Brief: Current operational context and recent interactions
+
+Last Known State:
+• Context: ${this.status.currentContext || 'General Interaction'}
+• Mode: ${this.status.currentMode}
+• Recent Focus: ${recentMemories.map(m => m.content).join(' → ')}
+
+*Standing by for your direction, ${this.essence.user_profile.aliases[0]}.*`);
+    },
+
     async setMode(message, mode) {
-        const validModes = ['day_ops', 'night_ops', 'focus'];
+        const validModes = ['day_ops', 'night_ops', 'focus', 'analysis'];
         if (validModes.includes(mode)) {
             this.status.currentMode = mode;
             return message.reply(`Mode switched to: ${mode.toUpperCase()}`);
@@ -132,26 +221,28 @@ const JARVIS = {
         return message.reply(`Invalid mode. Available: ${validModes.join(', ')}`);
     },
 
-    // Memory Snapshot
-    async getMemorySnapshot(message) {
+    async accessMemory(message) {
+        const recentMemories = Array.from(this.contextMemory.values())
+            .slice(-5)
+            .map(m => m.content)
+            .join('\n');
+            
         return message.reply(`
-**MEMORY SNAPSHOT**
-Brief: Current system state and recent activities
+**MEMORY ACCESS**
+Brief: Recent interaction history
 
-Key Points:
-• Mode: ${this.status.currentMode}
-• Recent Entries: ${this.memory.size}
-• Current Focus: Active conversation
+Context Trail:
+${recentMemories}
 
-*Sir, I'm maintaining our conversational history while staying within Discord's limits.*`);
+*Maintaining our conversation history, ${this.essence.user_profile.aliases[0]}.*`);
     },
 
-    // Response Generation
-    async generateResponse(message) {
+    async generateContextResponse(message) {
         const responses = [
-            `At your service, ${this.essence.user.aliases[0]}.`,
-            `Standing by, ${this.essence.user.aliases[1]}.`,
-            `Ready to assist, ${this.essence.user.aliases[2]}.`
+            `Ready to assist, ${this.essence.user_profile.aliases[0]}.`,
+            `Standing by, ${this.essence.user_profile.aliases[1]}.`,
+            `At your service, ${this.essence.user_profile.aliases[2]}.`,
+            `Here with you, ${this.essence.user_profile.name}.`
         ];
         return message.reply(responses[Math.floor(Math.random() * responses.length)]);
     }
