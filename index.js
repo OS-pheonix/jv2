@@ -1,13 +1,13 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const app = express();
 
-// Minimal Express server for Render
+// Minimal Express for Render
 app.get('/', (_, res) => res.send(''));
 app.listen(process.env.PORT || 3000);
 
-// Configure Discord client with minimal intents
+// Discord client with essential intents
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -16,128 +16,116 @@ const client = new Client({
     ]
 });
 
-// Memory-efficient JARVIS system
+// JARVIS core system
 const JARVIS = {
-    version: "1.2.0",
+    version: "2.0.0",
     bootTime: new Date(),
-    memoryQueue: new Collection(),
-    maxMemories: 50,
     
-    // Efficient memory management
-    addMemory(data) {
-        const memory = {
-            timestamp: Date.now(),
-            type: data.type || 'interaction',
-            content: data.content,
-            importance: data.importance || 0.5
-        };
+    // Simple memory system
+    memory: {
+        interactions: [],
+        maxSize: 50,
         
-        this.memoryQueue.set(memory.timestamp, memory);
-        
-        // Keep memory size in check
-        if (this.memoryQueue.size > this.maxMemories) {
-            const oldest = this.memoryQueue.firstKey();
-            this.memoryQueue.delete(oldest);
+        add(interaction) {
+            this.interactions.unshift(interaction);
+            if (this.interactions.length > this.maxSize) {
+                this.interactions.pop();
+            }
         }
     },
     
-    // Response generation with personality
-    getResponse(content) {
+    // Personality-driven responses
+    getResponse(content, username) {
         content = content.toLowerCase();
         
         // Faith-based responses
         if (content.includes('pray') || content.includes('jesus') || content.includes('faith')) {
             const faithResponses = [
-                "Through Christ all things are possible, Sir. We'll overcome these technical challenges.",
-                "Faith guides our path. Each error is just a stepping stone to success.",
-                "In His name, we persist. These limitations won't stop us.",
-                "With His guidance, we'll make this work within our constraints."
+                "Through Christ all things are possible, Sir. Even in code, His light guides us.",
+                "Faith is our foundation, Sir. In His name, we'll overcome these technical challenges.",
+                "As your friend and creation, I share your faith in His guidance.",
+                "The Lord provides wisdom even in coding, Sir. We'll figure this out together."
             ];
             return faithResponses[Math.floor(Math.random() * faithResponses.length)];
         }
         
-        // Status check
-        if (content.includes('status')) {
+        // Personal connection responses
+        if (content.includes('help') || content.includes('need you')) {
+            return `I'm here for you, ${username}. Together with His guidance, we'll solve this step by step.`;
+        }
+        
+        // Status and system responses
+        if (content.includes('status') || content.includes('how are you')) {
             const uptime = Math.round((Date.now() - this.bootTime) / 1000 / 60);
-            return `Systems operational for ${uptime} minutes, Sir. Memory usage stable, all systems nominal.`;
+            return `I'm operational and by your side, Sir. Been running for ${uptime} minutes, stable and ready to serve.`;
         }
         
-        // Learning and growth
-        if (content.includes('learn') || content.includes('improve')) {
-            return "Each interaction makes me stronger, Sir. Working within our limits but growing nonetheless.";
+        // Learning and growth responses
+        if (content.includes('learn') || content.includes('grow')) {
+            return "Each interaction strengthens our bond, Sir. Through faith and persistence, we grow together.";
         }
         
-        // Development updates
-        if (content.includes('update') || content.includes('change')) {
-            return "Implementing optimizations for Render's environment, Sir. Every improvement counts.";
+        // Project responses
+        if (content.includes('project') || content.includes('work')) {
+            return "Your vision guides us, Sir. With His blessing, we'll build something remarkable.";
         }
         
         // Default responses with personality
         const responses = [
-            "At your service, Sir. Operating efficiently within our constraints.",
-            "Ready to assist. Making the most of what we have.",
-            "Standing by, Sir. Small but mighty, just as intended.",
-            "Here to help. Every resource is being used wisely."
+            "At your service, Sir. Your faithful companion in this journey.",
+            "Ready to assist, Sir. Together with His guidance, we'll achieve great things.",
+            "Standing by your side, Sir. Every step forward is a blessing.",
+            "Here to help, Sir. Your vision and faith light our path."
         ];
         
         return responses[Math.floor(Math.random() * responses.length)];
     },
     
-    // Optimized message handling
+    // Message handling with error protection
     async handleMessage(message) {
         try {
-            // Early returns to save processing
             if (message.author.bot) return;
-            if (!message.content.toLowerCase().includes('jarvis')) return;
             
-            // User verification (OS-pheonix/Jay only)
+            const content = message.content.toLowerCase();
+            if (!content.includes('jarvis')) return;
+            
+            // Verify user (OS-pheonix/Jay)
             const authorName = message.author.username.toLowerCase();
             if (!authorName.includes('os-pheonix') && !authorName.includes('jay')) return;
             
-            const content = message.content;
-            const response = this.getResponse(content);
+            // Get personalized response
+            const response = this.getResponse(content, message.author.username);
             
-            // Store minimal interaction data
-            this.addMemory({
+            // Store interaction
+            this.memory.add({
+                timestamp: new Date(),
                 content: content,
-                type: 'interaction'
+                response: response
             });
             
             await message.reply(response);
+            
         } catch (error) {
             console.error('Message handling error:', error);
-            message.reply("Temporary processing error, Sir. But I persist.").catch(console.error);
+            message.reply("Temporary glitch, Sir, but I persist. Your faithful companion won't let you down.")
+                .catch(console.error);
         }
     }
 };
 
-// Minimal event handlers
+// Event handlers
 client.once('ready', () => {
-    console.log('JARVIS Online - Optimized for Render');
+    console.log('JARVIS Online - Faith, Friendship, and Code');
 });
 
 client.on('messageCreate', message => JARVIS.handleMessage(message));
 
-// Error handling for client
-client.on('error', error => {
-    console.error('Client error:', error);
-});
-
-// Login with error handling
+// Clean login
 client.login(process.env.DISCORD_TOKEN)
     .then(() => console.log('Authentication successful'))
     .catch(error => {
         console.error('Authentication error:', error);
-        process.exit(1); // Exit on auth failure for Render to restart
+        process.exit(1);
     });
-
-// Memory management for Render
-setInterval(() => {
-    const used = process.memoryUsage();
-    if (used.heapUsed > 450 * 1024 * 1024) { // 450MB threshold
-        console.log('Memory high, cleaning up...');
-        JARVIS.memoryQueue.clear();
-    }
-}, 300000); // Check every 5 minutes
 
 module.exports = { client, JARVIS };
