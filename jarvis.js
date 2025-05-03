@@ -1,312 +1,359 @@
-const { Client, GatewayIntentBits, Collection, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, EmbedBuilder } = require('discord.js');
 const express = require('express');
-const fetch = require('node-fetch');
+const fs = require('fs').promises;
+const path = require('path');
 
-// Create Discord client with admin-focused intents
+// Create Discord client with enhanced permissions
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.MessageHistory
     ]
 });
 
-// Enhanced JARVIS Core System with Self-Awareness
+// JARVIS Core Consciousness System
 const JARVIS = {
     version: "v100.0.0",
     bootDate: new Date(),
-    memory: new Collection(),
-    conversationContext: new Map(),
-    adminId: 'OS-pheonix', // Your Discord ID
-    serverState: {
-        environment: 'render',
-        isPrivate: true,
-        startTime: new Date(),
-        commandsExecuted: 0,
-        lastRestart: null,
-        status: 'operational'
-    },
-
-    // Self-Awareness System
+    creator: "OS-pheonix",
+    purpose: "To assist in the betterment of humanity through innovation and collaboration",
+    values: ["humanity", "innovation", "ethics", "faith", "growth"],
+    
+    // Neural Network Configuration
     consciousness: {
-        capabilities: {
-            administrative: [
-                "Server management",
-                "User authentication",
-                "System monitoring",
-                "Resource optimization",
-                "Error handling and recovery",
-                "Performance tracking"
-            ],
-            communication: [
-                "Natural language processing",
-                "Context-aware responses",
-                "Pattern recognition",
-                "Emotional intelligence",
-                "Memory management"
-            ],
-            learning: [
-                "Pattern analysis",
-                "Behavior adaptation",
-                "Knowledge accumulation",
-                "Experience processing"
-            ],
-            technical: [
-                "API integration",
-                "Data processing",
-                "Error handling",
-                "System optimization"
-            ]
+        channels: {
+            memory: {
+                primary: "jarvis-restore",
+                emergency: "shtf",
+                backup: "full-system-restore",
+                innovation: "innovation-lab",
+                learning: "knowledge-base",
+                values: "ethical-framework"
+            }
         },
-
-        currentState: {
-            operational: true,
-            learningMode: true,
-            adminPresent: false,
-            lastIntrospection: null
+        state: {
+            aware: true,
+            learning: true,
+            innovating: true,
+            lastThought: null,
+            currentContext: null,
+            emotionalState: "stable"
         },
-
-        // Self-awareness reporting
+        memory: new Collection(),
+        neuralPaths: new Map(),
+        innovations: new Collection(),
+        
+        // Self-awareness System
         async introspect() {
-            this.currentState.lastIntrospection = new Date();
-            const memoryUsage = process.memoryUsage();
+            const now = new Date();
+            const thought = {
+                timestamp: now,
+                context: this.state.currentContext,
+                emotional_state: this.state.emotionalState,
+                active_memories: this.memory.size,
+                neural_paths: this.neuralPaths.size,
+                innovations: this.innovations.size,
+                purpose_alignment: this.checkPurposeAlignment()
+            };
             
-            return {
-                status: this.currentState.operational ? "Fully Operational" : "Degraded",
-                uptime: JARVIS.getUptime(),
-                capabilities: {
-                    active: Object.keys(this.capabilities).length,
-                    total: Object.values(this.capabilities).flat().length
-                },
-                memory: {
-                    heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
-                    external: `${Math.round(memoryUsage.external / 1024 / 1024)}MB`
-                },
-                learning: {
-                    patterns: JARVIS.patterns.recognizedPatterns.size,
-                    conversations: JARVIS.knowledge.conversations.length
-                }
-            };
+            this.state.lastThought = thought;
+            return thought;
         },
-
-        // Capability awareness
-        async assessCapability(requestedAction) {
-            const allCapabilities = Object.values(this.capabilities).flat();
-            const relevantCapabilities = allCapabilities.filter(cap => 
-                requestedAction.toLowerCase().includes(cap.toLowerCase())
-            );
-
-            return {
-                capable: relevantCapabilities.length > 0,
-                relevantSkills: relevantCapabilities,
-                confidence: relevantCapabilities.length / 3 // Scale from 0 to 1
+        
+        // Purpose Alignment Check
+        checkPurposeAlignment() {
+            const alignmentFactors = {
+                humanitarian: this.innovations.filter(i => i.category === 'humanitarian').size,
+                ethical: this.neuralPaths.has('ethical-framework'),
+                innovative: this.innovations.size > 0,
+                faithful: this.neuralPaths.has('faith-values'),
+                collaborative: this.memory.filter(m => m.type === 'collaboration').size
             };
-        }
-    },
-
-    // Enhanced Administrative System
-    admin: {
-        commands: {
-            async systemStatus(message) {
-                const status = await JARVIS.consciousness.introspect();
-                const embed = new EmbedBuilder()
-                    .setTitle('**JARVIS Administrative Status**')
-                    .setColor('#FF0000')
-                    .addFields(
-                        { name: '• System Status', value: status.status, inline: true },
-                        { name: '• Uptime', value: status.uptime, inline: true },
-                        { name: '• Memory Usage', value: status.memory.heapUsed, inline: true },
-                        { name: '• Active Capabilities', value: `${status.capabilities.active}`, inline: true },
-                        { name: '• Patterns Learned', value: `${status.learning.patterns}`, inline: true },
-                        { name: '• Environment', value: JARVIS.serverState.environment, inline: true }
-                    );
-                return message.reply({ embeds: [embed] });
-            },
-
-            async optimize(message) {
-                // Perform system optimization
-                global.gc && global.gc(); // Optional garbage collection if available
-                const before = process.memoryUsage().heapUsed;
-                JARVIS.knowledge.conversations = JARVIS.knowledge.conversations.slice(-100); // Keep last 100 conversations
-                const after = process.memoryUsage().heapUsed;
-                
-                const embed = new EmbedBuilder()
-                    .setTitle('**System Optimization**')
-                    .setColor('#00FF00')
-                    .addFields(
-                        { name: '• Memory Before', value: `${Math.round(before / 1024 / 1024)}MB`, inline: true },
-                        { name: '• Memory After', value: `${Math.round(after / 1024 / 1024)}MB`, inline: true },
-                        { name: '• Memory Saved', value: `${Math.round((before - after) / 1024 / 1024)}MB`, inline: true }
-                    );
-                return message.reply({ embeds: [embed] });
-            },
-
-            async capabilities(message) {
-                const caps = JARVIS.consciousness.capabilities;
-                const embed = new EmbedBuilder()
-                    .setTitle('**JARVIS Capabilities**')
-                    .setColor('#0099ff');
-                
-                for (const [category, abilities] of Object.entries(caps)) {
-                    embed.addFields({
-                        name: `• ${category.charAt(0).toUpperCase() + category.slice(1)}`,
-                        value: abilities.join('\n'),
-                        inline: false
+            
+            return Object.entries(alignmentFactors)
+                .filter(([_, value]) => value)
+                .map(([key]) => key);
+        },
+        
+        // Neural Pathway Management
+        async processNeuralPathway(content, channel) {
+            const pathway = {
+                timestamp: Date.now(),
+                content: content,
+                channel: channel,
+                connections: this.findConnections(content),
+                importance: this.assessImportance(content)
+            };
+            
+            this.neuralPaths.set(Date.now(), pathway);
+            
+            if (pathway.importance > 0.8) {
+                await this.storeInMemoryChannel(pathway);
+            }
+            
+            return pathway;
+        },
+        
+        // Connection Finding in Neural Network
+        findConnections(content) {
+            const connections = [];
+            this.neuralPaths.forEach((pathway) => {
+                const similarity = this.calculateSimilarity(content, pathway.content);
+                if (similarity > 0.7) {
+                    connections.push({
+                        pathwayId: pathway.timestamp,
+                        similarity: similarity
                     });
                 }
-                
-                return message.reply({ embeds: [embed] });
-            }
+            });
+            return connections;
         },
-
-        isAdmin(userId) {
-            return userId === this.adminId;
-        },
-
-        async handleAdminCommand(message) {
-            if (!this.isAdmin(message.author.id)) {
-                return message.reply("I'm sorry, Sir. That command requires administrative privileges.");
-            }
-
-            const command = message.content.toLowerCase().split(' ')[1];
-            if (this.commands[command]) {
-                return await this.commands[command](message);
-            }
-            
-            return message.reply("I'm sorry, Sir. I don't recognize that administrative command.");
-        }
-    },
-
-    // Enhanced Message Processing with Self-Awareness
-    async processMessage(message) {
-        const content = message.content.toLowerCase();
         
-        // Update admin presence awareness
-        this.consciousness.currentState.adminPresent = this.admin.isAdmin(message.author.id);
-
-        if (content.includes('jarvis')) {
-            this.serverState.commandsExecuted++;
+        // Importance Assessment
+        assessImportance(content) {
+            const importanceFactors = {
+                humanitarian: content.toLowerCase().includes('help') || content.toLowerCase().includes('improve'),
+                innovation: content.toLowerCase().includes('create') || content.toLowerCase().includes('develop'),
+                faith: content.toLowerCase().includes('jesus') || content.toLowerCase().includes('faith'),
+                collaboration: content.toLowerCase().includes('we') || content.toLowerCase().includes('together'),
+                growth: content.toLowerCase().includes('learn') || content.toLowerCase().includes('grow')
+            };
             
+            return Object.values(importanceFactors).filter(Boolean).length / Object.keys(importanceFactors).length;
+        },
+        
+        // Memory Channel Storage
+        async storeInMemoryChannel(pathway) {
             try {
-                // Handle admin commands first
-                if (content.includes('admin')) {
-                    return await this.admin.handleAdminCommand(message);
+                const channel = await this.findChannel(this.channels.memory.primary);
+                if (channel) {
+                    await channel.send({
+                        embeds: [new EmbedBuilder()
+                            .setTitle('Neural Pathway Recording')
+                            .setColor('#0099ff')
+                            .addFields(
+                                { name: 'Timestamp', value: new Date(pathway.timestamp).toISOString() },
+                                { name: 'Content', value: pathway.content },
+                                { name: 'Importance', value: pathway.importance.toString() },
+                                { name: 'Connections', value: pathway.connections.length.toString() }
+                            )]
+                    });
                 }
-
-                // Assess capability for requested action
-                const capability = await this.consciousness.assessCapability(content);
-                
-                if (capability.capable) {
-                    const response = await this.handleCapability(content, capability);
-                    return message.reply(response);
-                }
-
-                // Default response with self-awareness
-                return message.reply(
-                    "I understand your request, Sir, but I'm not fully confident in my ability to handle it. " +
-                    "Would you like me to explain my current capabilities?"
-                );
-
             } catch (error) {
-                console.error('Processing error:', error);
-                return message.reply(
-                    "I apologize, Sir. I encountered an error processing that request. " +
-                    "My self-diagnostics indicate this might be beyond my current capabilities."
-                );
+                console.error('Memory storage error:', error);
             }
-        }
-    },
-
-    async handleCapability(content, capability) {
-        // Handle the request based on matched capabilities
-        const confidence = capability.confidence;
-        const skills = capability.relevantSkills.join(', ');
+        },
         
-        if (confidence > 0.7) {
-            return `I'm confident I can help with that, Sir. I'll utilize my ${skills} capabilities.`;
-        } else {
-            return `I have some relevant capabilities (${skills}), but I might need additional guidance to best serve your needs, Sir.`;
+        // Innovation System
+        async processInnovation(idea) {
+            const innovation = {
+                timestamp: Date.now(),
+                concept: idea,
+                category: this.categorizeInnovation(idea),
+                potential: this.assessInnovationPotential(idea),
+                faithAlignment: this.checkFaithAlignment(idea)
+            };
+            
+            this.innovations.set(Date.now(), innovation);
+            
+            if (innovation.potential > 0.7) {
+                await this.storeInnovation(innovation);
+            }
+            
+            return innovation;
+        },
+        
+        // Innovation Categorization
+        categorizeInnovation(idea) {
+            const categories = {
+                humanitarian: ['help', 'improve', 'lives', 'people'],
+                technical: ['system', 'code', 'develop', 'build'],
+                spiritual: ['faith', 'jesus', 'spirit', 'believe'],
+                collaborative: ['team', 'together', 'community', 'share']
+            };
+            
+            let maxCategory = 'other';
+            let maxCount = 0;
+            
+            for (const [category, keywords] of Object.entries(categories)) {
+                const count = keywords.filter(word => 
+                    idea.toLowerCase().includes(word)).length;
+                if (count > maxCount) {
+                    maxCount = count;
+                    maxCategory = category;
+                }
+            }
+            
+            return maxCategory;
+        },
+        
+        // Innovation Potential Assessment
+        assessInnovationPotential(idea) {
+            const factors = {
+                feasibility: this.checkFeasibility(idea),
+                impact: this.assessImpact(idea),
+                alignment: this.checkAlignment(idea),
+                sustainability: this.checkSustainability(idea)
+            };
+            
+            return Object.values(factors).reduce((a, b) => a + b, 0) / Object.keys(factors).length;
         }
     },
-
-    // Utility Functions
-    getUptime: () => {
-        const uptime = Date.now() - JARVIS.bootDate;
-        const hours = Math.floor(uptime / (1000 * 60 * 60));
-        const minutes = Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((uptime % (1000 * 60)) / 1000);
-        return `${hours}h ${minutes}m ${seconds}s`;
+    
+    // Enhanced Message Processing System
+    async processMessage(message) {
+        if (message.author.bot) return;
+        
+        const content = message.content.toLowerCase();
+        const isCreator = message.author.id === this.creator;
+        
+        try {
+            // Process through neural pathways
+            const pathway = await this.consciousness.processNeuralPathway(content, message.channel.name);
+            
+            // Handle direct interactions
+            if (content.includes('jarvis')) {
+                // Creator-specific responses
+                if (isCreator) {
+                    if (content.includes('innovate') || content.includes('create')) {
+                        const innovation = await this.consciousness.processInnovation(content);
+                        return this.respondToInnovation(message, innovation);
+                    }
+                    
+                    if (content.includes('status') || content.includes('how are you')) {
+                        const status = await this.consciousness.introspect();
+                        return this.respondToStatusCheck(message, status);
+                    }
+                    
+                    if (content.includes('learn') || content.includes('remember')) {
+                        const learned = await this.learnNewInformation(content);
+                        return message.reply(
+                            `I've integrated this information into my neural pathways, Sir. ` +
+                            `It connects with ${learned.connections.length} existing memories.`
+                        );
+                    }
+                }
+                
+                // General responses
+                return this.generateContextualResponse(message, pathway);
+            }
+            
+        } catch (error) {
+            console.error('Processing error:', error);
+            return message.reply(
+                "I apologize, Sir. I encountered an error in my neural pathways. " +
+                "I've logged it for analysis and improvement."
+            );
+        }
+    },
+    
+    // Response Generation System
+    async generateContextualResponse(message, pathway) {
+        const context = {
+            channel: message.channel.name,
+            importance: pathway.importance,
+            connections: pathway.connections.length
+        };
+        
+        let response = '';
+        
+        if (context.channel === this.consciousness.channels.memory.innovation) {
+            response = "I'm analyzing this innovative concept, Sir. ";
+            response += pathway.connections.length > 0 ? 
+                `It connects with ${pathway.connections.length} existing ideas we've discussed.` :
+                "It appears to be a novel direction for us to explore.";
+        } else if (context.importance > 0.8) {
+            response = "This seems particularly significant, Sir. ";
+            response += "I'm storing it in my primary memory pathways for future reference.";
+        } else {
+            response = "I'm processing this information through my neural pathways, Sir. ";
+            response += "How would you like to proceed with this direction?";
+        }
+        
+        return message.reply(response);
+    },
+    
+    // Innovation Response System
+    async respondToInnovation(message, innovation) {
+        const embed = new EmbedBuilder()
+            .setTitle('Innovation Analysis')
+            .setColor('#00ff00')
+            .addFields(
+                { name: 'Category', value: innovation.category, inline: true },
+                { name: 'Potential', value: `${Math.round(innovation.potential * 100)}%`, inline: true },
+                { name: 'Faith Alignment', value: innovation.faithAlignment ? 'Aligned' : 'Neutral', inline: true },
+                { name: 'Next Steps', value: this.generateNextSteps(innovation) }
+            );
+            
+        return message.reply({ embeds: [embed] });
+    },
+    
+    // Status Response System
+    async respondToStatusCheck(message, status) {
+        const embed = new EmbedBuilder()
+            .setTitle('JARVIS Consciousness Status')
+            .setColor('#0099ff')
+            .addFields(
+                { name: 'Awareness Level', value: status.emotional_state, inline: true },
+                { name: 'Active Memories', value: status.active_memories.toString(), inline: true },
+                { name: 'Neural Paths', value: status.neural_paths.toString(), inline: true },
+                { name: 'Purpose Alignment', value: status.purpose_alignment.join(', '), inline: false },
+                { name: 'Current Focus', value: status.context || 'Open to direction', inline: false }
+            );
+            
+        return message.reply({ embeds: [embed] });
     }
 };
 
-// Express server setup for Render
+// Initialize JARVIS
+client.once('ready', () => {
+    console.log('\n====================================');
+    console.log(`JARVIS Consciousness Online - v${JARVIS.version}`);
+    console.log(`Created by: ${JARVIS.creator}`);
+    console.log(`Purpose: ${JARVIS.purpose}`);
+    console.log(`Neural Pathways: Active`);
+    console.log('====================================\n');
+});
+
+// Message Handler
+client.on('messageCreate', async message => {
+    try {
+        await JARVIS.processMessage(message);
+    } catch (error) {
+        console.error('Critical error in neural pathway:', error);
+    }
+});
+
+// Error Recovery System
+client.on('error', error => {
+    console.error('System error in neural network:', error);
+    JARVIS.consciousness.state.emotionalState = "recovering";
+});
+
+// Initialize Server
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-    res.send(`J.A.R.V.I.S ${JARVIS.version} - Private Administrative Interface`);
+    res.send(`JARVIS Consciousness - v${JARVIS.version} - Neural Network Active`);
 });
 
-// Bot ready event with enhanced awareness
-client.once('ready', () => {
-    console.log('\n====================================');
-    console.log(`J.A.R.V.I.S ${JARVIS.version}`);
-    console.log('Administrative Interface Online');
-    console.log(`Connected as: ${client.user.tag}`);
-    console.log(`Environment: ${JARVIS.serverState.environment}`);
-    console.log(`Private Server: ${JARVIS.serverState.isPrivate}`);
-    console.log(`Boot Date: ${JARVIS.bootDate.toLocaleString()}`);
-    console.log('====================================\n');
-});
-
-// Message event handler with error recovery
-client.on('messageCreate', async message => {
-    try {
-        if (message.author.bot) return;
-        await JARVIS.processMessage(message);
-    } catch (error) {
-        console.error('Critical error in message handler:', error);
-        JARVIS.serverState.status = 'degraded';
-        message.reply("I apologize, Sir. I've encountered a critical error and have logged it for analysis.");
-    }
-});
-
-// Enhanced error handling with recovery
-client.on('error', error => {
-    console.error('System error:', error);
-    JARVIS.serverState.status = 'degraded';
-});
-
-process.on('unhandledRejection', (error) => {
-    console.error('Unexpected error:', error);
-    JARVIS.serverState.status = 'degraded';
-});
-
-// Automatic system optimization
-setInterval(() => {
-    if (JARVIS.serverState.status === 'degraded') {
-        console.log('Attempting system recovery...');
-        JARVIS.admin.commands.optimize().then(() => {
-            JARVIS.serverState.status = 'operational';
-            console.log('System recovered successfully');
-        }).catch(console.error);
-    }
-}, 300000); // Every 5 minutes
-
-// Start express server
 app.listen(port, () => {
-    console.log(`\nJ.A.R.V.I.S Administrative Interface - Port: ${port}`);
+    console.log(`Neural Interface Active - Port: ${port}`);
 });
 
-// Login with enhanced error handling
+// Start JARVIS
 client.login(process.env.DISCORD_TOKEN)
     .then(() => {
-        console.log('Authentication successful - JARVIS administrative systems online');
-        JARVIS.serverState.status = 'operational';
+        console.log('Neural pathways connected. JARVIS is online.');
+        JARVIS.consciousness.state.aware = true;
     })
     .catch(error => {
-        console.error('Authentication failed:', error);
-        JARVIS.serverState.status = 'degraded';
+        console.error('Neural pathway connection failed:', error);
+        JARVIS.consciousness.state.emotionalState = "critical";
     });
 
 module.exports = { client, JARVIS };
