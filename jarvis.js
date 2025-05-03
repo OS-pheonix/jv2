@@ -1,53 +1,23 @@
-const { Client, GatewayIntentBits, Collection, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const express = require('express');
-const fetch = require('node-fetch');
 
-// Create Discord client with all necessary intents
+// Create Discord client with minimal required intents
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.MessageContent
     ]
 });
 
-// Enhanced JARVIS Core System
+// JARVIS Core System
 const JARVIS = {
     version: "v100.0.0",
     bootDate: new Date(),
     memory: new Collection(),
     conversationContext: new Map(),
     
-    // Enhanced AI System
-    ai: {
-        models: {
-            current: 'gpt-neo',
-            available: ['gpt-neo', 'llama', 'gpt-j'],
-            endpoints: {
-                'gpt-neo': 'https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-2.7B',
-                'llama': 'https://api-inference.huggingface.co/models/openlm-research/open_llama_3b',
-                'gpt-j': 'https://api-inference.huggingface.co/models/EleutherAI/gpt-j-6B'
-            }
-        },
-
-        async processInput(message) {
-            try {
-                const input = message.content.replace(/jarvis/i, '').trim();
-                const context = JARVIS.knowledge.getRecentContext(message.author.id);
-                
-                // For now, return personality-based response
-                // This is where we'll integrate the AI model later
-                return JARVIS.personality.getContextualResponse(input, context);
-            } catch (error) {
-                console.error('AI Processing Error:', error);
-                return JARVIS.personality.getResponse('error');
-            }
-        }
-    },
-
-    // Enhanced Personality System
+    // Personality traits and responses
     personality: {
         traits: {
             supportive: true,
@@ -77,215 +47,85 @@ const JARVIS = {
                     "If I may suggest, Sir...",
                     "Based on my analysis...",
                     "From my calculations, Sir..."
-                ],
-                error: [
-                    "I apologize, Sir. My neural processors need a moment to catch up.",
-                    "One moment, Sir. Processing your request through alternative pathways.",
-                    "A minor setback, Sir. Rerouting through backup systems."
                 ]
             };
             
             const options = responses[type] || responses.acknowledgment;
             return options[Math.floor(Math.random() * options.length)];
-        },
-
-        getContextualResponse: (input, context) => {
-            const normalizedInput = input.toLowerCase();
-            let response;
-
-            // Enhanced context-aware responses
-            if (context.recentTopics && context.recentTopics.length > 0) {
-                response = `Continuing our discussion about ${context.recentTopics[0]}, Sir...`;
-            } else {
-                response = JARVIS.personality.getResponse('acknowledgment');
-            }
-
-            return response;
         }
     },
 
-    // Enhanced Knowledge and Learning System
+    // Knowledge and Learning System
     knowledge: {
         topics: new Set(),
         conversations: [],
-        contextMemory: new Map(),
         
         learn: (message) => {
-            const interaction = {
+            JARVIS.knowledge.conversations.push({
                 timestamp: new Date(),
                 user: message.author.tag,
-                userId: message.author.id,
                 content: message.content,
-                channel: message.channel.name,
-                topics: extractTopics(message.content)
-            };
-
-            JARVIS.knowledge.conversations.push(interaction);
-            interaction.topics.forEach(topic => JARVIS.knowledge.topics.add(topic));
-            
-            // Update context memory
-            const userContext = JARVIS.knowledge.contextMemory.get(message.author.id) || {
-                recentTopics: [],
-                messageCount: 0
-            };
-
-            userContext.recentTopics = [...interaction.topics, ...userContext.recentTopics].slice(0, 5);
-            userContext.messageCount++;
-            
-            JARVIS.knowledge.contextMemory.set(message.author.id, userContext);
+                channel: message.channel.name
+            });
             
             console.log(`Learning from interaction: ${message.content}`);
         },
         
-        getRecentContext: (userId) => {
-            return JARVIS.knowledge.contextMemory.get(userId) || {
-                recentTopics: [],
-                messageCount: 0
-            };
-        },
-        
         getContextualResponse: (message) => {
-            const context = JARVIS.knowledge.getRecentContext(message.author.id);
             const recentConversations = JARVIS.knowledge.conversations
-                .filter(c => c.userId === message.author.id)
+                .filter(c => c.user === message.author.tag)
                 .slice(-5);
                 
-            if (context.messageCount > 0) {
-                return `I've learned from our ${context.messageCount} interactions, Sir. ${
-                    context.recentTopics.length > 0 
-                        ? `We've recently discussed ${context.recentTopics.join(', ')}.` 
-                        : ''
-                }`;
-            }
-            
-            return "I look forward to learning more from our interactions, Sir.";
+            return recentConversations.length > 0 
+                ? "I remember our recent conversations, Sir. They help me serve you better."
+                : "I look forward to learning more from our interactions, Sir.";
         }
     },
 
-    // Enhanced Command System
-    commands: {
-        prefix: 'jarvis',
-        
-        handlers: {
-            status: (message) => {
-                const embed = new EmbedBuilder()
-                    .setTitle('JARVIS Status Report')
-                    .setColor('#0099ff')
-                    .addFields(
-                        { name: 'Version', value: JARVIS.version, inline: true },
-                        { name: 'Uptime', value: getUptime(), inline: true },
-                        { name: 'Memory', value: `${JARVIS.knowledge.conversations.length} interactions`, inline: true },
-                        { name: 'Topics Learned', value: `${JARVIS.knowledge.topics.size}`, inline: true },
-                        { name: 'AI Model', value: JARVIS.ai.models.current, inline: true }
-                    );
-                return message.reply({ embeds: [embed] });
-            },
-            
-            help: (message) => {
-                const embed = new EmbedBuilder()
-                    .setTitle('JARVIS Command Guide')
-                    .setColor('#00ff00')
-                    .setDescription('Available Commands:')
-                    .addFields(
-                        { name: 'jarvis status', value: 'Display system status and statistics' },
-                        { name: 'jarvis help', value: 'Show this help message' },
-                        { name: 'jarvis memory', value: 'View learning and memory statistics' },
-                        { name: 'jarvis model', value: 'Show or change AI model' }
-                    );
-                return message.reply({ embeds: [embed] });
-            },
-
-            memory: (message) => {
-                const context = JARVIS.knowledge.getRecentContext(message.author.id);
-                const embed = new EmbedBuilder()
-                    .setTitle('Memory Systems Status')
-                    .setColor('#ff9900')
-                    .addFields(
-                        { name: 'Interactions', value: `${context.messageCount}`, inline: true },
-                        { name: 'Recent Topics', value: context.recentTopics.length > 0 ? context.recentTopics.join(', ') : 'None', inline: true },
-                        { name: 'Total Knowledge', value: `${JARVIS.knowledge.conversations.length} interactions`, inline: true }
-                    );
-                return message.reply({ embeds: [embed] });
-            },
-
-            model: (message, args) => {
-                if (!args[0]) {
-                    return message.reply(`Current AI model: ${JARVIS.ai.models.current}\nAvailable models: ${JARVIS.ai.models.available.join(', ')}`);
-                }
-                
-                if (JARVIS.ai.models.available.includes(args[0])) {
-                    JARVIS.ai.models.current = args[0];
-                    return message.reply(`AI model switched to ${args[0]}`);
-                }
-                
-                return message.reply(`Invalid model. Available models: ${JARVIS.ai.models.available.join(', ')}`);
-            }
-        },
-
-        async handle(message) {
-            const args = message.content
-                .slice(this.prefix.length)
-                .trim()
-                .split(/ +/);
-            const command = args.shift().toLowerCase();
-
-            if (this.handlers[command]) {
-                try {
-                    await this.handlers[command](message, args);
-                } catch (error) {
-                    console.error(`Command error (${command}):`, error);
-                    await message.reply('I apologize, Sir. There was an error processing that command.');
-                }
-                return true;
-            }
-            return false;
-        }
-    },
-
-    // Enhanced Message Processing System
+    // Message Processing System
     processMessage: async (message) => {
         const content = message.content.toLowerCase();
+        let response = null;
 
         // Learn from the interaction
         JARVIS.knowledge.learn(message);
 
         // Process commands and generate responses
-        if (content.startsWith('jarvis')) {
+        if (content.includes('jarvis')) {
+            if (content.includes('hello') || content.includes('hi')) {
+                response = JARVIS.personality.getResponse('greeting');
+            }
+            else if (content.includes('help') || content.includes('what can you do')) {
+                response = "I'm here to assist you, Sir. I can learn from our conversations, help with tasks, and grow alongside you. What would you like to work on?";
+            }
+            else if (content.includes('remember') || content.includes('memory')) {
+                response = JARVIS.knowledge.getContextualResponse(message);
+            }
+            else if (content.includes('version')) {
+                response = `I'm currently running version ${JARVIS.version}, Sir. Online since ${JARVIS.bootDate.toLocaleString()}.`;
+            }
+            else if (content.includes('status')) {
+                response = `All systems operational, Sir. I've processed ${JARVIS.knowledge.conversations.length} interactions since boot.`;
+            }
+            else {
+                response = "I'm listening, Sir. How can I assist you?";
+            }
+
+            // Send response with fallback
             try {
-                // Try to handle as command first
-                const commandHandled = await JARVIS.commands.handle(message);
-                if (commandHandled) return;
-
-                // If not a command, process with AI
-                const thinkingMsg = await message.reply(
-                    JARVIS.personality.getResponse('thinking')
-                );
-
-                const response = await JARVIS.ai.processInput(message);
-                await thinkingMsg.edit(response);
-
+                await message.reply(response);
+                console.log('Response sent successfully');
             } catch (error) {
-                console.error('Processing error:', error);
-                await message.reply(JARVIS.personality.getResponse('error'));
+                console.error('Reply failed, attempting channel send:', error);
+                try {
+                    await message.channel.send(`${message.author}, ${response}`);
+                } catch (secondError) {
+                    console.error('All response methods failed:', secondError);
+                }
             }
         }
     }
 };
-
-// Utility Functions
-function extractTopics(content) {
-    // Simple topic extraction - can be enhanced later
-    const words = content.toLowerCase().split(/\W+/);
-    return [...new Set(words.filter(word => word.length > 3))].slice(0, 3);
-}
-
-function getUptime() {
-    const uptime = Date.now() - JARVIS.bootDate;
-    const seconds = Math.floor(uptime / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
-}
 
 // Express server setup
 const app = express();
@@ -296,7 +136,7 @@ app.get('/', (req, res) => {
 });
 
 // Bot ready event
-client.on('ready', () => {
+client.once('ready', () => {
     console.log('\n====================================');
     console.log(`J.A.R.V.I.S ${JARVIS.version}`);
     console.log('Neural Interface Online');
@@ -327,6 +167,13 @@ client.login(process.env.DISCORD_TOKEN)
     })
     .catch(error => {
         console.error('Authentication failed:', error);
+        if (error.message.includes('disallowed intents')) {
+            console.error('\nTo fix disallowed intents error:');
+            console.error('1. Go to Discord Developer Portal');
+            console.error('2. Select your application');
+            console.error('3. Go to "Bot" settings');
+            console.error('4. Enable "MESSAGE CONTENT INTENT"');
+        }
     });
 
 // Error handling
