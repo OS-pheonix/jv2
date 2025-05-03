@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: jarvis-discord-bot
+    name: jarvis-discord
     env: node
     buildCommand: npm install
     startCommand: node index.js
