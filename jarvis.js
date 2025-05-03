@@ -1,217 +1,286 @@
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
-const crypto = require('crypto');
+const { Client, GatewayIntentBits, Collection, EmbedBuilder } = require('discord.js');
+const express = require('express');
+const fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
 
-// Initialize the client with required intents
+// Create Discord client with necessary intents
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessageReactions
     ]
 });
 
-// JARVIS Core System
+// Enhanced JARVIS System
 const JARVIS = {
-    version: "2.0.0",
+    version: "v100.0.0",
     bootDate: new Date(),
-    memory: new Collection(),
-    security: {
-        maxRetries: 3,
-        lockoutDuration: 15 * 60 * 1000, // 15 minutes
-        allowedOrigins: [], // We'll populate this from environment if needed
-        activeTokens: new Set(),
-        blockedIPs: new Set(),
-        
-        generateToken() {
-            const token = crypto.randomBytes(32).toString('hex');
-            this.activeTokens.add(token);
-            return token;
+    memory: new Map(),
+    context: new Map(),
+    conversationHistory: new Map(),
+
+    // Enhanced Free AI Implementation using multiple models
+    ai: {
+        models: {
+            current: 'gpt-neo', // Default model
+            available: ['gpt-neo', 'llama', 'gpt-j'],
+            endpoints: {
+                'gpt-neo': 'https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-2.7B',
+                'llama': 'https://api-inference.huggingface.co/models/openlm-research/open_llama_3b',
+                'gpt-j': 'https://api-inference.huggingface.co/models/EleutherAI/gpt-j-6B'
+            }
         },
-        
-        validateToken(token) {
-            return this.activeTokens.has(token);
+
+        async processInput(message) {
+            const userId = message.author.id;
+            const input = message.content.replace(/jarvis/i, '').trim();
+            
+            // Get conversation history
+            let history = this.getConversationHistory(userId);
+            
+            try {
+                const response = await fetch(
+                    this.models.endpoints[this.models.current],
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            inputs: `${history}\nUser: ${input}\nJARVIS:`,
+                            parameters: {
+                                max_length: 150,
+                                temperature: 0.7,
+                                top_p: 0.9,
+                                return_full_text: false
+                            }
+                        }),
+                    }
+                );
+
+                const result = await response.json();
+                const aiResponse = this.formatResponse(result[0].generated_text);
+                
+                // Update conversation history
+                this.updateConversationHistory(userId, input, aiResponse);
+                
+                // Learn from interaction
+                this.learnFromInteraction(input, aiResponse);
+                
+                return aiResponse;
+
+            } catch (error) {
+                console.error('AI Processing Error:', error);
+                return this.getFallbackResponse();
+            }
         },
-        
-        isBlocked(ip) {
-            return this.blockedIPs.has(ip);
+
+        getConversationHistory(userId, limit = 5) {
+            const history = JARVIS.conversationHistory.get(userId) || [];
+            return history.slice(-limit).map(h => `${h.role}: ${h.content}`).join('\n');
         },
-        
-        blockIP(ip) {
-            this.blockedIPs.add(ip);
-            setTimeout(() => this.blockedIPs.delete(ip), this.lockoutDuration);
+
+        updateConversationHistory(userId, input, response) {
+            const history = JARVIS.conversationHistory.get(userId) || [];
+            history.push(
+                { role: 'User', content: input },
+                { role: 'JARVIS', content: response }
+            );
+            // Keep last 10 messages
+            while (history.length > 10) history.shift();
+            JARVIS.conversationHistory.set(userId, history);
+        },
+
+        learnFromInteraction(input, response) {
+            // Store interaction in memory for learning
+            const key = this.generateMemoryKey(input);
+            const existing = JARVIS.memory.get(key) || { count: 0, responses: [] };
+            
+            existing.count++;
+            if (!existing.responses.includes(response)) {
+                existing.responses.push(response);
+            }
+            
+            JARVIS.memory.set(key, existing);
+        },
+
+        generateMemoryKey(input) {
+            // Create a simplified key from input for memory storage
+            return input.toLowerCase()
+                .replace(/[^\w\s]/g, '')
+                .split(' ')
+                .filter(word => word.length > 3)
+                .sort()
+                .join('_');
+        },
+
+        formatResponse(text) {
+            return text
+                .replace(/^JARVIS:\s*/i, '')
+                .trim()
+                .replace(/\n+/g, ' ');
+        },
+
+        getFallbackResponse() {
+            const responses = [
+                "I apologize, Sir. My neural processors need a moment to catch up.",
+                "One moment, Sir. Processing your request through alternative pathways.",
+                "Interesting query. Let me approach this from a different angle.",
+                "My systems are adapting to better assist you, Sir."
+            ];
+            return responses[Math.floor(Math.random() * responses.length)];
         }
     },
-    
-    intelligence: {
-        // Smart Input Analysis
-        analyzeInput: (input) => {
-            const analysis = {
-                intent: JARVIS.intelligence.detectIntent(input),
-                entities: JARVIS.intelligence.extractEntities(input),
-                sentiment: JARVIS.intelligence.analyzeSentiment(input),
-                complexity: JARVIS.intelligence.assessComplexity(input),
-                topics: JARVIS.intelligence.identifyTopics(input),
-                context: JARVIS.intelligence.determineContext(input)
-            };
-            
-            return analysis;
-        },
-        
-        // Intent Detection
-        detectIntent: (input) => {
-            const intents = {
-                question: /\b(what|how|why|when|where|who|can you|could you)\b/i,
-                command: /\b(do|make|create|show|find|help|analyze)\b/i,
-                statement: /\b(is|are|was|were|will|should)\b/i,
-                reflection: /\b(think|feel|believe|wonder|consider)\b/i
-            };
-            
-            for (const [intent, pattern] of Object.entries(intents)) {
-                if (pattern.test(input)) return intent;
+
+    // Enhanced Command System
+    commands: {
+        async handle(message) {
+            const args = message.content.slice(6).trim().split(/ +/);
+            const command = args.shift().toLowerCase();
+
+            switch(command) {
+                case 'status':
+                    return this.getStatus(message);
+                case 'memory':
+                    return this.getMemoryStatus(message);
+                case 'model':
+                    return this.switchModel(message, args[0]);
+                case 'clear':
+                    return this.clearMemory(message);
+                case 'help':
+                    return this.showHelp(message);
+                default:
+                    return null;
             }
-            return 'conversation';
         },
-        
-        // Simplified sentiment analysis
-        analyzeSentiment: (input) => {
-            const positiveWords = /\b(good|great|excellent|amazing|love|happy|perfect|fantastic|awesome)\b/i;
-            const negativeWords = /\b(bad|wrong|terrible|awful|hate|sad|angry|frustrated|disappointed)\b/i;
+
+        async getStatus(message) {
+            const uptime = Math.floor((Date.now() - JARVIS.bootDate) / 1000);
+            const embed = new EmbedBuilder()
+                .setTitle('JARVIS Status Report')
+                .setColor('#0099ff')
+                .addFields(
+                    { name: 'Version', value: JARVIS.version, inline: true },
+                    { name: 'AI Model', value: JARVIS.ai.models.current, inline: true },
+                    { name: 'Uptime', value: `${uptime} seconds`, inline: true },
+                    { name: 'Memory Usage', value: `${JARVIS.memory.size} entries`, inline: true }
+                );
+            return message.reply({ embeds: [embed] });
+        },
+
+        async getMemoryStatus(message) {
+            const memorySize = JARVIS.memory.size;
+            const historySize = JARVIS.conversationHistory.get(message.author.id)?.length || 0;
             
-            if (positiveWords.test(input)) return 'positive';
-            if (negativeWords.test(input)) return 'negative';
-            return 'neutral';
+            const embed = new EmbedBuilder()
+                .setTitle('Memory Systems Status')
+                .setColor('#00ff99')
+                .addFields(
+                    { name: 'Learned Patterns', value: `${memorySize}`, inline: true },
+                    { name: 'Conversation History', value: `${historySize} messages`, inline: true }
+                );
+            return message.reply({ embeds: [embed] });
         },
-        
-        // Basic complexity assessment
-        assessComplexity: (input) => {
-            const words = input.split(/\s+/).length;
-            if (words > 20) return 'high';
-            if (words > 10) return 'medium';
-            return 'low';
-        },
-        
-        // Topic identification
-        identifyTopics: (input) => {
-            const topics = new Set();
-            const topicPatterns = {
-                technical: /\b(code|program|system|data|algorithm)\b/i,
-                creative: /\b(design|create|build|develop|innovate)\b/i,
-                planning: /\b(plan|strategy|approach|method|process)\b/i,
-                security: /\b(secure|protect|encrypt|safety|guard)\b/i
-            };
-            
-            for (const [topic, pattern] of Object.entries(topicPatterns)) {
-                if (pattern.test(input)) topics.add(topic);
+
+        async switchModel(message, newModel) {
+            if (!newModel || !JARVIS.ai.models.available.includes(newModel)) {
+                return message.reply(`Available models: ${JARVIS.ai.models.available.join(', ')}`);
             }
-            return topics;
+            JARVIS.ai.models.current = newModel;
+            return message.reply(`AI model switched to ${newModel}`);
         },
-        
-        // Context determination
-        determineContext: (input) => {
-            const contexts = {
-                technical: /\b(code|program|error|bug|system|function)\b/i,
-                planning: /\b(plan|design|create|develop|implement)\b/i,
-                question: /\b(how|what|why|when|where|who)\b/i,
-                personal: /\b(feel|think|believe|want|need)\b/i
-            };
-            
-            for (const [context, pattern] of Object.entries(contexts)) {
-                if (pattern.test(input)) return context;
-            }
-            return 'general';
+
+        async clearMemory(message) {
+            JARVIS.conversationHistory.delete(message.author.id);
+            return message.reply("Conversation history cleared, Sir.");
         },
-        
-        // Entity extraction
-        extractEntities: (input) => {
-            const entities = {
-                dates: input.match(/\b\d{4}-\d{2}-\d{2}\b/g) || [],
-                times: input.match(/\b\d{2}:\d{2}(:\d{2})?\b/g) || [],
-                numbers: input.match(/\b\d+\b/g) || [],
-                emails: input.match(/\b[\w.-]+@[\w.-]+\.\w+\b/g) || []
-            };
-            return entities;
+
+        async showHelp(message) {
+            const embed = new EmbedBuilder()
+                .setTitle('JARVIS Command Guide')
+                .setColor('#ff9900')
+                .setDescription('Available Commands:')
+                .addFields(
+                    { name: 'jarvis status', value: 'Display system status' },
+                    { name: 'jarvis memory', value: 'Show memory statistics' },
+                    { name: 'jarvis model <name>', value: 'Switch AI model' },
+                    { name: 'jarvis clear', value: 'Clear conversation history' },
+                    { name: 'jarvis help', value: 'Display this help message' }
+                );
+            return message.reply({ embeds: [embed] });
         }
     },
-    
-    // Message Processing
-    processMessage: async (message) => {
+
+    // Enhanced Message Processing
+    async processMessage(message) {
         if (message.author.bot) return;
+
+        const content = message.content.toLowerCase();
         
-        try {
-            // Analyze input
-            const analysis = JARVIS.intelligence.analyzeInput(message.content);
-            
-            // Store in memory
-            JARVIS.memory.set(`msg_${Date.now()}`, {
-                content: message.content,
-                analysis: analysis,
-                author: message.author.id,
-                timestamp: Date.now()
-            });
-            
-            // Generate response based on analysis
-            let response = `I've analyzed your message, Sir. `;
-            if (analysis.intent === 'question') {
-                response += `I detect you're asking a question about ${Array.from(analysis.topics).join(', ')}.`;
-            } else if (analysis.intent === 'command') {
-                response += `I understand you want me to perform a task related to ${Array.from(analysis.topics).join(', ')}.`;
+        // Only respond to messages mentioning JARVIS
+        if (content.includes('jarvis')) {
+            try {
+                // Handle commands first
+                const commandResponse = await this.commands.handle(message);
+                if (commandResponse) return;
+
+                // Send thinking response
+                const thinkingMsg = await message.reply(
+                    "Processing, Sir..."
+                );
+
+                // Get AI response
+                const response = await this.ai.processInput(message);
+
+                // Update message with response
+                await thinkingMsg.edit(response);
+
+            } catch (error) {
+                console.error('Processing error:', error);
+                await message.reply(this.ai.getFallbackResponse());
             }
-            
-            await message.reply(response);
-            
-        } catch (error) {
-            console.error('Processing error:', error);
-            await message.reply("I apologize, Sir. I encountered an error while processing your request.");
         }
     }
 };
 
-// Event Handlers
+// Express server setup for Render
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+    res.send(`JARVIS ${JARVIS.version} - Neural Interface Online`);
+});
+
+// Discord event handlers
 client.once('ready', () => {
-    console.log(`\n====================================`);
-    console.log(`J.A.R.V.I.S ${JARVIS.version}`);
-    console.log('Neural Core Online');
+    console.log('\n====================================');
+    console.log(`JARVIS ${JARVIS.version}`);
+    console.log('Neural Interface Online');
     console.log(`Connected as: ${client.user.tag}`);
     console.log('====================================\n');
 });
 
-client.on('messageCreate', JARVIS.processMessage);
-
-client.on('error', error => {
-    console.error('Neural pathway error:', error);
-    JARVIS.memory.set('lastError', {
-        timestamp: Date.now(),
-        error: error.message
-    });
+client.on('messageCreate', async message => {
+    try {
+        await JARVIS.processMessage(message);
+    } catch (error) {
+        console.error('Error in message handler:', error);
+    }
 });
 
-// Clean shutdown handler
-process.on('SIGTERM', () => {
-    console.log('Initiating neural core shutdown...');
-    client.destroy();
-    process.exit(0);
+// Start express server
+app.listen(port, () => {
+    console.log(`JARVIS Web Interface Online - Port: ${port}`);
 });
 
-// Get token from environment variables
-const TOKEN = process.env.DISCORD_TOKEN || process.env.TOKEN;
+// Login with your Discord token
+client.login(process.env.DISCORD_TOKEN)
+    .catch(error => console.error('Authentication failed:', error));
 
-if (!TOKEN) {
-    console.error('Critical Error: Neural synapses failed - Discord token not found!');
-    console.error('Please configure DISCORD_TOKEN in Render environment variables.');
-    process.exit(1);
-}
-
-// Start the system with enhanced error handling
-client.login(TOKEN)
-    .then(() => console.log('Neural network synchronized'))
-    .catch(error => {
-        console.error('Neural synchronization failed:', error);
-        if (error.message.includes('TOKEN')) {
-            console.error('Token validation failed - Please check your Discord token in Render settings.');
-        }
-        process.exit(1);
-    });
+// Error handling
+process.on('unhandledRejection', error => {
+    console.error('Unhandled error:', error);
+});
 
 module.exports = { client, JARVIS };
